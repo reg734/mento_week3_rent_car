@@ -1,103 +1,111 @@
-import requests
-from bs4 import BeautifulSoup
+import os
+import shutil
+
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
+from bs4 import BeautifulSoup
 import time
+import json
+import requests
 
-
-def get_static_data(url):
-    headers = {
-        "User-Agent": "Mozilla/5.0"
-    }
-    res = requests.get(url, headers=headers)
-    soup = BeautifulSoup(res.text, "html.parser")
-
-    # 廠牌
-    brand = soup.select_one(".bread a[href*='/make/']")
-    brand_name = brand.text.strip() if brand else "無資料"
-
-    # 車款標題
-    title = soup.select_one(".trim-main h1.title")
-    car_title = title.text.strip() if title else "無資料"
-
-    # 主圖（第一張）
-    img = soup.select_one(".trim-carousel img")
-    img_url = img.get("src") if img else "無圖片"
-
-    return {
-        "廠牌": brand_name,
-        "車款": car_title,
-        "圖片": img_url,
-    }
-
-
-def get_dynamic_spec(url):
+def yahoo_car_crawler(url):
     options = Options()
-    options.add_argument('--headless')  # 背景執行
-    options.add_argument('--disable-gpu')
-    options.add_argument('--no-sandbox')
-
+    options.add_argument('--headless=new')
     driver = webdriver.Chrome(options=options)
+
     driver.get(url)
+    time.sleep(3)
 
-    wait = WebDriverWait(driver, 15)
+    final_url = driver.current_url
+    print(final_url)
 
-    # 點擊「規格配備」tab
-    try:
-        tab = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "a[data-tab-id='spec']")))
-        tab.click()
-        time.sleep(3)
-    except Exception as e:
-        print("⚠️ 無法點擊規格配備頁籤：", e)
+    soup = BeautifulSoup(driver.page_source, 'html.parser')
+    spec_wrapper = soup.find('div', {'class': 'spec-wrapper'})
+    if spec_wrapper is None:
+        return None
+    fields_dict = {
+        'displacement': '排氣量',
+        'body': '車身型式',
+        'seat': '座位數',
+        'door': '車門數',
+        'car_length': '車長',
+        'wheelbase': '軸距',
+        'power_type': '動力型式',
+        'brand': '廠牌',
+        'model': '車款'
+    }
 
-    # 等待 spec 區塊載入
-    try:
-        wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, ".trim-spec-detail .spec-wrapper")))
-        time.sleep(1)
-    except Exception as e:
-        print("⚠️ 規格未及時出現，嘗試備援等待")
-        time.sleep(5)
+    fields = ["排氣量", "車身型式", "座位數", "車門數", "車長", "軸距", "動力型式", "廠牌", "車款"]
 
-    # 抓資料
-    html = driver.page_source
-    soup = BeautifulSoup(html, "html.parser")
-    spec_data = {}
+    info_dict = {}
 
-    for li in soup.select(".trim-spec-detail .spec-wrapper li"):
-        spans = li.select("span")
-        if len(spans) >= 2:
-            key = spans[0].text.strip()
-            val = spans[1].text.strip()
-            spec_data[key] = val
+    # 將網頁的標題添加到車輛資訊中，並只取 '|' 前的部分
+    title = soup.find('title').text
+    car_name = title.split('|')[0].strip()
+    info_dict['name'] = car_name
+    save_images(soup, car_name)
+    for field_key, field in fields_dict.items():
+        field_info = spec_wrapper.find('span', text=field)
+        if field_info is not None:
+            field_value = field_info.find_next_sibling('span').text
+            info_dict[field_key] = field_value
+        else:
+            info_dict[field_key] = None
+
+
 
     driver.quit()
-    return spec_data
+    print(info_dict)
+    return info_dict
+
+       
+def save_images(soup, car_name):
+    image_tags = soup.find_all('img', {'class': 'gabtn'})
+
+    script_dir = os.path.dirname(os.path.abspath(__file__))  # 找到目前這支 .py 的路徑
+    static_path = os.path.join(script_dir, '..', 'static', 'images', 'cars', car_name)
+
+    if not os.path.exists(static_path):
+        os.makedirs(static_path)
+
+    for i, img in enumerate(image_tags):
+        if i >= 3:
+            break
+        img_url = img['src']
+        response = requests.get(img_url, stream=True)
+
+        if response.status_code == 200:
+            response.raw.decode_content = True
+            img_filename = os.path.join(static_path, f'img_{i}.jpg')
+            with open(img_filename, 'wb') as f:
+                shutil.copyfileobj(response.raw, f)
 
 
-def yahoo_combined_crawler(url):
-    static = get_static_data(url)
-    dynamic = get_dynamic_spec(url)
-
-    # 合併資料
-    car_info = {
-        **static,
-        "排氣量": dynamic.get("排氣量", "無資料"),
-        "車身型式": dynamic.get("車身型式", "無資料"),
-        "車門數": dynamic.get("車門數", "無資料"),
-        "座位數": dynamic.get("座位數", "無資料"),
-        "車長": dynamic.get("車長", "無資料"),
-        "軸距": dynamic.get("軸距", "無資料"),
-        "引擎型式": dynamic.get("引擎型式", "無資料"),
-        "動力型式": dynamic.get("動力型式", dynamic.get("驅動型式", "無資料")),
-    }
-
-    for k, v in car_info.items():
-        print(f"{k}: {v}")
 
 
-if __name__ == "__main__":
-    yahoo_combined_crawler("https://autos.yahoo.com.tw/new-cars/trim/suzuki-swift-2016-1-.-2-glx/spec")
+# 從 JSON 檔案讀取車輛列表
+script_dir = os.path.dirname(os.path.abspath(__file__))
+json_path = os.path.join(script_dir, "car_list.json")
+with open(json_path, "r", encoding="utf-8") as file:
+    car_list = json.load(file)
+
+cars_info = []
+for i, car in enumerate(car_list):
+    if i > 10:
+        break
+    short_link = car['short_link']
+    print(short_link)
+    if short_link is not None:
+        car_info = yahoo_car_crawler(short_link)
+        if car_info is not None:
+            cars_info.append(car_info)
+
+# 找到目前這支程式所在的資料夾
+script_dir = os.path.dirname(os.path.abspath(__file__))
+
+# 建立 JSON 檔案的完整路徑
+output_path = os.path.join(script_dir, "car.json")
+
+# 將抓取的車輛資料存成 cars.json 檔案
+with open(output_path, "w", encoding="utf-8") as file:
+    json.dump(cars_info, file)
