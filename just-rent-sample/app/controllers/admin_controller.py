@@ -11,3 +11,9 @@ def admin_index():
     return render_template('admin/index.html', cars=cars)
 
 
+@bp.route('/admin/cars')
+def admin_cars():
+    sql = text("SELECT * FROM cars")
+    result = db.session.execute(sql)
+    cars = [row for row in result]
+    return render_template('admin/cars.html', cars=cars)
