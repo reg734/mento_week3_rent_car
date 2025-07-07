@@ -18,7 +18,7 @@
                                     <th>門數</th>
                                     <th>車型</th>
                                     <th>排氣量</th>
-                                    <th>能源</th>
+                                    <th>品牌</th>
                                     <th>編輯</th>
                                     <th>觀看</th>
                                 </tr>
@@ -31,9 +31,9 @@
                                     <td>{{car.door_number}}</td>
                                     <td>{{car.body}}</td>
                                     <td>{{car.displacement}}</td>
-                                    <td>{{car.power_type}}</td>
-                                    <td><a href="#">編輯</a></td>
-                                    <td><a href="#">預覽</a></td>
+                                    <td>{{car.brand}}</td>
+                                    <td><a href="{{ url_for('controller.admin_edit_car', car_id=car.id) }}">編輯</a></td>
+                                    <td><a href="{{ url_for('controller.admin_view_car', car_id=car.id) }}">預覽</a></td>
                                 </tr>
                                 {% endfor %}
                             </tbody>

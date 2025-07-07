@@ -1,0 +1,99 @@
+{% extends "admin/base.html" %}
+{% block content %}
+<div id="main">
+<section class="section">
+    <div class="card">
+        <div class="card-header m-auto">
+            <h4 class="card-title">汽車清單</h4>
+        </div>
+        <form method="POST">
+            <div class="card-body">
+        
+                <!-- 汽車名稱 -->
+                <div class="row justify-content-center mb-3">
+                    <div class="col-md-3"><label for="name">汽車名稱</label></div>
+                    <div class="col-md-5"><input type="text" class="form-control" name="name" value="{{ car.name }}"readonly></div>
+                </div>
+        
+                <!-- 排氣量 -->
+                <div class="row justify-content-center mb-3">
+                    <div class="col-md-3"><label for="displacement">排氣量</label></div>
+                    <div class="col-md-5"><input type="text" class="form-control" name="displacement" value="{{ car.displacement }}"readonly></div>
+                </div>
+        
+                <!-- 車身型式 -->
+                <div class="row justify-content-center mb-3">
+                    <div class="col-md-3"><label for="body">車身型式</label></div>
+                    <div class="col-md-5"><input type="text" class="form-control" name="body" value="{{ car.body }}"readonly></div>
+                </div>
+        
+                <!-- 車門數 -->
+                <div class="row justify-content-center mb-3">
+                    <div class="col-md-3"><label for="door">車門數</label></div>
+                    <div class="col-md-5"><input type="text" class="form-control" name="door" value="{{ car.door }}"readonly></div>
+                </div>
+        
+                <!-- 座位數 -->
+                <div class="row justify-content-center mb-3">
+                    <div class="col-md-3"><label for="seat">座位數</label></div>
+                    <div class="col-md-5"><input type="text" class="form-control" name="seat" value="{{ car.seat }}"readonly></div>
+                </div>
+        
+                <!-- 座位說明 -->
+                <div class="row justify-content-center mb-3">
+                    <div class="col-md-3"><label for="seat_number">座位配置</label></div>
+                    <div class="col-md-5"><input type="text" class="form-control" name="seat_number" value="{{ car.seat_number }}"readonly></div>
+                </div>
+        
+                <!-- 車門說明 -->
+                <div class="row justify-content-center mb-3">
+                    <div class="col-md-3"><label for="door_number">車門配置</label></div>
+                    <div class="col-md-5"><input type="text" class="form-control" name="door_number" value="{{ car.door_number }}"readonly></div>
+                </div>
+        
+                <!-- 車長 -->
+                <div class="row justify-content-center mb-3">
+                    <div class="col-md-3"><label for="car_length">車長</label></div>
+                    <div class="col-md-5"><input type="text" class="form-control" name="car_length" value="{{ car.car_length }}"readonly></div>
+                </div>
+        
+                <!-- 軸距 -->
+                <div class="row justify-content-center mb-3">
+                    <div class="col-md-3"><label for="wheelbase">軸距</label></div>
+                    <div class="col-md-5"><input type="text" class="form-control" name="wheelbase" value="{{ car.wheelbase }}"readonly></div>
+                </div>
+        
+                <!-- 動力型式 -->
+                <div class="row justify-content-center mb-3">
+                    <div class="col-md-3"><label for="power_type">動力型式</label></div>
+                    <div class="col-md-5"><input type="text" class="form-control" name="power_type" value="{{ car.power_type }}"readonly></div>
+                </div>
+        
+                <!-- 品牌 -->
+                <div class="row justify-content-center mb-3">
+                    <div class="col-md-3"><label for="brand">品牌</label></div>
+                    <div class="col-md-5"><input type="text" class="form-control" name="brand" value="{{ car.brand }}"readonly></div>
+                </div>
+        
+                <!-- 車型 -->
+                <div class="row justify-content-center mb-3">
+                    <div class="col-md-3"><label for="car_type">車型</label></div>
+                    <div class="col-md-5"><input type="text" class="form-control" name="car_type" value="{{ car.car_type }}"readonly></div>
+                </div>
+        
+                <!-- 型號 -->
+                <div class="row justify-content-center mb-3">
+                    <div class="col-md-3"><label for="model">型號</label></div>
+                    <div class="col-md-5"><input type="text" class="form-control" name="model" value="{{ car.model }}"readonly></div>
+                </div>
+            </div>
+        
+            <div class="col-sm-12 d-flex justify-content-center">
+                <a href="{{ url_for('controller.admin_index') }}"readonly class="btn btn-light-secondary me-1 mb-1">回首頁</a>
+            </div>
+        </form>
+        
+    </div>
+</section>
+</div>
+{% endblock %}
