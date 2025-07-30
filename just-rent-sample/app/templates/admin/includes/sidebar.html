@@ -46,12 +46,17 @@
             <ul class="menu">
                 <li class="sidebar-title">Menu</li>
 
-                <li class="sidebar-item active ">
+                <li class="sidebar-item {% if request.endpoint == 'controller.admin_index' %}active{% endif %}">
                     <a href="{{ url_for('controller.admin_index') }}" class="sidebar-link">
                         <i class="bi bi-grid-fill"></i>
                         <span>Cars</span>
                     </a>
-
+                </li>
+                <li class="sidebar-item {% if request.endpoint == 'controller.admin_upload' %}active{% endif %}">
+                    <a href="{{ url_for('controller.admin_upload') }}" class="sidebar-link">
+                        <i class="bi bi-cloud-arrow-up-fill"></i>
+                        <span>圖片管理</span>
+                    </a>
                 </li>
             </ul>
         </div>

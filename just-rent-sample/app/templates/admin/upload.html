@@ -1,0 +1,90 @@
+{% extends "admin/base.html" %}
+
+{% block content %}
+
+<div id="main">
+    <header class="mb-3">
+        <a href="#" class="burger-btn d-block d-xl-none">
+            <i class="bi bi-justify fs-3"></i>
+        </a>
+    </header>
+    
+<div class="page-heading">
+<div class="page-title">
+<div class="row">
+    <div class="col-12 col-md-6 order-md-1 order-last">
+        <h3>圖片上傳</h3>
+    </div>
+    <div class="col-12 col-md-6 order-md-2 order-first">
+        <nav aria-label="breadcrumb" class="breadcrumb-header float-start float-lg-end">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ url_for('controller.admin_index') }}">首頁</a></li>
+                <li class="breadcrumb-item active" aria-current="page">圖片管理</li>
+            </ol>
+        </nav>
+    </div>
+</div>
+</div>
+
+<!-- Flash Messages -->
+{% with messages = get_flashed_messages() %}
+    {% if messages %}
+        <div class="row">
+            <div class="col-12">
+                {% for message in messages %}
+                    <div class="alert alert-info alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    {% endif %}
+{% endwith %}
+
+<section class="section">
+<div class="row">
+    <div class="col-12 col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title">上傳圖片</h5>
+            </div>
+            <div class="card-content">
+                <div class="card-body">
+                    <!-- 上傳表單 -->
+                    <form action="{{ url_for('controller.admin_upload') }}" method="POST" enctype="multipart/form-data">
+                        <div class="form-group">
+                            <label for="file" class="form-label">選擇圖片檔案：</label>
+                            <input type="file" 
+                                   name="file" 
+                                   id="file" 
+                                   class="form-control" 
+                                   accept="image/png, image/jpeg, image/gif, image/jpg"
+                                   required>
+                            <div class="form-text">支援格式：PNG, JPG, JPEG, GIF</div>
+                        </div>
+                        <div class="form-group mt-3">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-upload"></i> 上傳檔案
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</section>
+</div>
+
+    <footer default-translate="no">
+<div class="footer clearfix mb-0 text-muted">
+<div class="float-start">
+    <p>2025 © rent_car</p>
+</div>
+<div class="float-end">
+</div>
+</div>
+</footer>
+</div>
+{% endblock %}
