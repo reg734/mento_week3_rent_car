@@ -3,8 +3,11 @@ from flask import render_template,request,redirect, url_for, flash
 from app import db
 from sqlalchemy import text
 from app.services.s3_service import S3Service
+from flask_login import login_required
+
 
 @bp.route('/admin')
+@login_required
 def admin_index():
     sql = text("SELECT * FROM cars")
     result = db.session.execute(sql)
@@ -13,6 +16,7 @@ def admin_index():
 
 
 @bp.route('/admin/cars')
+@login_required
 def admin_cars():
     sql = text("SELECT * FROM cars")
     result = db.session.execute(sql)
@@ -20,6 +24,7 @@ def admin_cars():
     return render_template('admin/cars.html', cars=cars)
 
 @bp.route('/admin/edit_car/<int:car_id>', methods=['GET', 'POST'])
+@login_required
 def admin_edit_car(car_id):
     if request.method == 'POST':
         db.session.execute(text("""
@@ -64,6 +69,7 @@ def admin_edit_car(car_id):
     return render_template('admin/edit_car.html', car=car)
 
 @bp.route('/admin/view_car/<int:car_id>')
+@login_required
 def admin_view_car(car_id):
     query = text('SELECT * FROM cars WHERE id = :car_id')
     car = db.session.execute(query, {'car_id': car_id}).fetchone()
@@ -79,6 +85,7 @@ def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 @bp.route('/admin/upload', methods=['GET', 'POST'])
+@login_required
 def admin_upload():
     if request.method == 'POST':
         if 'file' not in request.files:

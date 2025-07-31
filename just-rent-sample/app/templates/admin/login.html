@@ -1,0 +1,47 @@
+{% extends 'admin/base.html' %}
+{% set exclude_sidebar = True %}
+{% block content %}
+
+<div id="auth" class="d-flex justify-content-center align-items-center vh-100">
+    <div class="auth-container p-4 shadow-lg rounded" style="max-width: 400px; background-color: #ffffff;">
+        <h1 class="auth-title text-center mb-4">登入後台</h1>
+        <p class="auth-subtitle text-center mb-5">請輸入您的帳號與密碼</p>
+
+        <!-- 顯示 flash 消息 -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="alert-container mb-4">
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        <form action="{{ url_for('controller.admin_login') }}" method="POST">
+            <div class="form-group position-relative has-icon-left mb-4">
+                <input type="text" name="email" class="form-control form-control-xl" placeholder="Email">
+                <div class="form-control-icon">
+                    <i class="bi bi-person"></i>
+                </div>
+            </div>
+            <div class="form-group position-relative has-icon-left mb-4">
+                <input type="password" name="password" class="form-control form-control-xl" placeholder="Password">
+                <div class="form-control-icon">
+                    <i class="bi bi-shield-lock"></i>
+                </div>
+            </div>
+            <div class="form-check form-check-lg d-flex align-items-center mb-4">
+                <input class="form-check-input me-2" type="checkbox" value="" id="flexCheckDefault">
+                <label class="form-check-label text-gray-600" for="flexCheckDefault">
+                    保持登入
+                </label>
+            </div>
+            <button class="btn btn-primary btn-block btn-lg shadow-lg mt-3">登入</button>
+        </form>
+    </div>
+</div>
+{% endblock %}
