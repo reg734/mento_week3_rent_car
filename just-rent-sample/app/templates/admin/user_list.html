@@ -1,0 +1,53 @@
+{% extends "admin/base.html" %}
+{% block content %}
+<div id="main">
+    <header class="mb-3">
+    </header>
+    <section class="section">
+    <div class="row" id="table-striped">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="card-title">用戶列表</h4>
+                </div>
+                <div class="card-content">
+                    <div class="card-body">
+                    </div>
+                    <!-- table striped -->
+                    <div class="table-responsive">
+                        <table class="table table-striped mb-0">
+                            <thead>
+                                <tr>
+                                    <th>姓名</th>
+                                    <th>EMAIL</th>
+                                    <th>權限</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for user in users %}
+                                <tr>
+                                    <td>{{user.username}}</td>
+                                    <td>{{user.email}}</td>
+                                    <td>{{user.role}}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    </section>
+    <footer>
+        <div class="footer clearfix mb-0 text-muted">
+            <div class="float-start">
+                <p>2025 © rent_car</p>
+            </div>
+            <div class="float-end">
+
+            </div>
+        </div>
+    </footer>
+</div>
+{% endblock%}

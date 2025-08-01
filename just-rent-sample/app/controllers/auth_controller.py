@@ -11,9 +11,12 @@ def admin_login():
         password = request.form.get('password')
         user = User.query.filter_by(email=email).first()
         if user and user.check_password(password):
-            login_user(user)
-            flash('登入成功！', 'success')
-            return redirect(url_for('controller.admin_index'))
+            if user.is_admin(): 
+                login_user(user)
+                flash('登入成功！', 'success')
+                return redirect(url_for('controller.admin_index'))
+            else:
+                flash('權限不足，需要管理員權限', 'danger') 
         else:
             flash('無效的電子郵件或密碼', 'danger')
     return render_template('admin/login.html')

@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask, redirect, url_for, request, flash
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_login import LoginManager
@@ -20,9 +20,19 @@ def create_app(config_class=Config):
     # 初始化 LoginManager
     login_manager.init_app(app)
 
-    # 設置未登入時的重定向路由
-    login_manager.login_view = 'controller.admin_login'
+    # 設置未登入時的重定向頁面和提示消息
     login_manager.login_message = '請先登入以訪問此頁面。'
+
+    # 自定義未登入時的重定向邏輯
+    @login_manager.unauthorized_handler
+    def unauthorized():
+        flash(login_manager.login_message, 'warning')
+        if request.path.startswith('/admin'):
+            return redirect(url_for('controller.admin_login'))
+        else:
+            return redirect(url_for('controller.login'))
+
+    
 
     from app.models.user import User
     @login_manager.user_loader

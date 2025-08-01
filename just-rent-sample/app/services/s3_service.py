@@ -23,3 +23,10 @@ class S3Service:
         except Exception as e:
             print(f"Error uploading file to S3: {e}")
             return None
+    
+    # 定義允許的圖片擴展名
+    ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+
+    def allowed_file(self, filename):
+        """檢查檔案是否符合允許的擴展名"""
+        return '.' in filename and filename.rsplit('.', 1)[1].lower() in self.ALLOWED_EXTENSIONS

@@ -57,6 +57,14 @@
                         <span>圖片管理</span>
                     </a>
                 </li>
+                {% if current_user.is_authenticated and current_user.is_superadmin() %}
+                <li class="sidebar-item {% if request.endpoint == 'controller.user_list' %}active{% endif %}">
+                    <a href="{{ url_for('controller.user_list') }}" class="sidebar-link">
+                        <i class="bi bi-person-lines-fill"></i>
+                        <span>用戶列表</span>
+                    </a>
+                </li>
+                {% endif %}
                 <!-- 登出按鈕 -->
                 <li class="sidebar-item">
                     <a href="{{ url_for('controller.admin_logout') }}" class="sidebar-link">

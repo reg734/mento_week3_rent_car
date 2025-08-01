@@ -3,11 +3,11 @@ from flask import render_template,request,redirect, url_for, flash
 from app import db
 from sqlalchemy import text
 from app.services.s3_service import S3Service
-from flask_login import login_required
+from app.utils.role_decorators import role_required
 
 
 @bp.route('/admin')
-@login_required
+@role_required(['admin', 'superadmin']) 
 def admin_index():
     sql = text("SELECT * FROM cars")
     result = db.session.execute(sql)
@@ -16,7 +16,7 @@ def admin_index():
 
 
 @bp.route('/admin/cars')
-@login_required
+@role_required(['admin', 'superadmin']) 
 def admin_cars():
     sql = text("SELECT * FROM cars")
     result = db.session.execute(sql)
@@ -24,7 +24,7 @@ def admin_cars():
     return render_template('admin/cars.html', cars=cars)
 
 @bp.route('/admin/edit_car/<int:car_id>', methods=['GET', 'POST'])
-@login_required
+@role_required(['admin', 'superadmin']) 
 def admin_edit_car(car_id):
     if request.method == 'POST':
         db.session.execute(text("""
@@ -69,23 +69,14 @@ def admin_edit_car(car_id):
     return render_template('admin/edit_car.html', car=car)
 
 @bp.route('/admin/view_car/<int:car_id>')
-@login_required
+@role_required(['admin', 'superadmin']) 
 def admin_view_car(car_id):
     query = text('SELECT * FROM cars WHERE id = :car_id')
     car = db.session.execute(query, {'car_id': car_id}).fetchone()
-
-
     return render_template('admin/view_car.html', car=car)
 
-
-# 定義允許的圖片擴展名
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
-
-def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
-
 @bp.route('/admin/upload', methods=['GET', 'POST'])
-@login_required
+@role_required(['admin', 'superadmin']) 
 def admin_upload():
     if request.method == 'POST':
         if 'file' not in request.files:
@@ -95,12 +86,15 @@ def admin_upload():
         if file.filename == '':
             flash('未選擇檔案')
             return redirect(request.url)
-        if not allowed_file(file.filename):
+        
+        # 使用 S3Service 的 allowed_file 方法
+        s3_service = S3Service()
+        if not s3_service.allowed_file(file.filename):
             flash('只允許上傳圖片(png, jpg, jpeg, gif)')
             return redirect(request.url)
+        
         if file:
             # 使用 S3Service 上傳文件
-            s3_service = S3Service()
             file_url = s3_service.upload_file(file, file.filename)
             if file_url:
                 flash(f'檔案上傳成功: {file_url}')
@@ -108,3 +102,12 @@ def admin_upload():
                 flash('檔案上傳失敗')
             return redirect(url_for('controller.admin_upload'))
     return render_template('admin/upload.html')
+
+
+@bp.route('/admin/user_list')
+@role_required(['superadmin']) 
+def user_list():
+    sql = text("SELECT username, email, role FROM users")
+    result = db.session.execute(sql)
+    users = [row for row in result]
+    return render_template('admin/user_list.html', users=users)
