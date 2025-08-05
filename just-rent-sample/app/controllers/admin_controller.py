@@ -82,25 +82,38 @@ def admin_upload():
         if 'file' not in request.files:
             flash('請選擇要上傳的檔案')
             return redirect(request.url)
-        file = request.files['file']
-        if file.filename == '':
+        
+        files = request.files.getlist('file')  # 取得多個檔案
+        folder_name = request.form.get('folderName')  # 取得資料夾名稱
+
+        # 如果資料夾名稱為空，生成唯一資料夾名稱
+        if not folder_name or folder_name.strip() == '':
+            import uuid
+            folder_name = f"folder_{uuid.uuid4().hex}"
+
+        if not files or all(file.filename == '' for file in files):
             flash('未選擇檔案')
             return redirect(request.url)
         
-        # 使用 S3Service 的 allowed_file 方法
         s3_service = S3Service()
-        if not s3_service.allowed_file(file.filename):
-            flash('只允許上傳圖片(png, jpg, jpeg, gif)')
-            return redirect(request.url)
-        
-        if file:
-            # 使用 S3Service 上傳文件
-            file_url = s3_service.upload_file(file, file.filename)
+        uploaded_files = []
+
+        for file in files:
+            if not s3_service.allowed_file(file.filename):
+                flash(f'檔案 {file.filename} 的格式不被允許')
+                continue
+            
+            file_url = s3_service.upload_file(file, file.filename, folder_name)
             if file_url:
-                flash(f'檔案上傳成功: {file_url}')
-            else:
-                flash('檔案上傳失敗')
-            return redirect(url_for('controller.admin_upload'))
+                uploaded_files.append(file_url)
+        
+        if uploaded_files:
+            flash(f'檔案上傳成功: {", ".join(uploaded_files)}')
+        else:
+            flash('所有檔案上傳失敗')
+        
+        return redirect(url_for('controller.admin_upload'))
+    
     return render_template('admin/upload.html')
 
 

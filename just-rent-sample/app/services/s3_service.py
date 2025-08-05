@@ -1,5 +1,6 @@
 import boto3
 from flask import current_app
+import uuid
 
 class S3Service:
     def __init__(self):
@@ -11,14 +12,21 @@ class S3Service:
         )
         self.bucket_name = current_app.config['AWS_S3_BUCKET_NAME']
 
-    def upload_file(self, file, filename):
+    def upload_file(self, file, filename, folder_name=None):
         try:
+            # Generate a unique folder name if not provided
+            if folder_name is None:
+                folder_name = f"folder_{uuid.uuid4().hex}"
+
+            # Construct the full path for the file
+            file_path = f"{folder_name}/{filename}"
+
             self.s3.upload_fileobj(
                 file,
                 self.bucket_name,
-                filename
+                file_path
             )
-            file_url = f"https://{self.bucket_name}.s3.{current_app.config['AWS_S3_REGION']}.amazonaws.com/{filename}"
+            file_url = f"https://{self.bucket_name}.s3.{current_app.config['AWS_S3_REGION']}.amazonaws.com/{file_path}"
             return file_url
         except Exception as e:
             print(f"Error uploading file to S3: {e}")

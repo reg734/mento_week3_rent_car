@@ -9,11 +9,12 @@ $(document).ready(function () {
       container.html(''); // 清空原本內容
 
       data.forEach((car, index) => {
+        const imageUrl = `https://my-bucket-mento-reg23.s3.ap-northeast-1.amazonaws.com/img_${index}.jpg`;
         const html = `
           <div class="col-lg-12">
             <div class="de-item mb30">
               <div class="d-img">
-                <img src="/static/images/cars/bmw-m5.jpg" class="img-fluid" alt="">
+                 <img src="${imageUrl}" class="img-fluid" alt="Car Image">
               </div>
               <div class="d-info">
                 <div class="d-text">
