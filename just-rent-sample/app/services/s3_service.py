@@ -17,6 +17,8 @@ class S3Service:
             # Generate a unique folder name if not provided
             if folder_name is None:
                 folder_name = f"folder_{uuid.uuid4().hex}"
+            else:
+                folder_name = folder_name.strip()
 
             # Construct the full path for the file
             file_path = f"{folder_name}/{filename}"

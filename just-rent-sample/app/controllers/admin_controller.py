@@ -4,6 +4,8 @@ from app import db
 from sqlalchemy import text
 from app.services.s3_service import S3Service
 from app.utils.role_decorators import role_required
+from app.models.car_images import CarImages
+from flask_login import current_user
 
 
 @bp.route('/admin')
@@ -76,45 +78,61 @@ def admin_view_car(car_id):
     return render_template('admin/view_car.html', car=car)
 
 @bp.route('/admin/upload', methods=['GET', 'POST'])
-@role_required(['admin', 'superadmin']) 
+@role_required(['admin', 'superadmin'])
 def admin_upload():
     if request.method == 'POST':
-        if 'file' not in request.files:
-            flash('請選擇要上傳的檔案')
+        if 'file' not in request.files or 'carId' not in request.form:
+            flash('請選擇檔案並提供車輛 ID')
             return redirect(request.url)
-        
-        files = request.files.getlist('file')  # 取得多個檔案
-        folder_name = request.form.get('folderName')  # 取得資料夾名稱
 
-        # 如果資料夾名稱為空，生成唯一資料夾名稱
-        if not folder_name or folder_name.strip() == '':
-            import uuid
-            folder_name = f"folder_{uuid.uuid4().hex}"
+        file = request.files['file']
+        car_id = request.form.get('carId')  # 從表單獲取 car_id
+        folder_name = request.form.get('folderName')  # 從表單獲取資料夾名稱
 
-        if not files or all(file.filename == '' for file in files):
-            flash('未選擇檔案')
+        if not car_id.isdigit():
+            flash('車輛 ID 必須是有效的數字')
+            return redirect(request.url)
+
+        car_id = int(car_id)  # 將 car_id 轉換為整數
+
+        # 確保 car_id 存在於 Car 表中
+        sql = text("SELECT * FROM cars WHERE id = :car_id")
+        result = db.session.execute(sql, {"car_id": car_id})
+        car = result.fetchone()
+        if not car:
+            flash('提供的車輛 ID 無效，請選擇有效的車輛')
             return redirect(request.url)
         
         s3_service = S3Service()
-        uploaded_files = []
 
-        for file in files:
-            if not s3_service.allowed_file(file.filename):
-                flash(f'檔案 {file.filename} 的格式不被允許')
-                continue
-            
-            file_url = s3_service.upload_file(file, file.filename, folder_name)
-            if file_url:
-                uploaded_files.append(file_url)
-        
-        if uploaded_files:
-            flash(f'檔案上傳成功: {", ".join(uploaded_files)}')
+        if not s3_service.allowed_file(file.filename):
+            flash('只允許上傳圖片格式 (png, jpg, jpeg, gif)')
+            return redirect(request.url)
+
+        # 直接將 folder_name 傳給 S3Service，讓它處理預設值邏輯
+        file_url = s3_service.upload_file(file, file.filename, folder_name)
+
+        if file_url:
+            # 儲存到資料庫
+            new_image = CarImages(
+                car_id=car.id,  # 使用 Car 表的 ID
+                image_url=file_url,
+                created_by=current_user.username  # 使用 Flask-Login 的 current_user
+            )
+            db.session.add(new_image)
+            db.session.commit()
+
+            flash(f'圖片上傳成功，車輛 ID: {car.id}，資料夾名稱: {folder_name}')
         else:
-            flash('所有檔案上傳失敗')
-        
+            flash('圖片上傳失敗')
+
         return redirect(url_for('controller.admin_upload'))
-    
-    return render_template('admin/upload.html')
+
+    # 查詢所有車輛資料並傳遞到模板
+    sql = text("SELECT * FROM cars")
+    result = db.session.execute(sql)
+    cars = [row for row in result]
+    return render_template('admin/upload.html', cars=cars)
 
 
 @bp.route('/admin/user_list')
