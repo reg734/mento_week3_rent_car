@@ -20,7 +20,7 @@
             </section>
             <!-- section close -->
 
-            <section id="section-car-details">
+            <section id="section-car-details" data-car-id="{{ car_id }}">
                 <div class="container">
                     <div class="row g-5">
                         <div class="col-lg-6">
@@ -34,14 +34,11 @@
                                 <div class="item">
                                     <img src="{{ url_for('static', filename='images/car-single/3.jpg') }}" alt="">
                                 </div>
-                                <div class="item">
-                                    <img src="{{ url_for('static', filename='images/car-single/4.jpg') }}" alt="">
-                                </div>
                             </div>
                         </div>
 
                         <div class="col-lg-3">
-                            <h3>BMW M2 2020</h3>
+                            <h3 id="car-name">BMW M2 2020</h3>
                             <p>The BMW M2 is the high-performance version of the 2 Series 2-door coupé. The first generation of the M2 is the F87 coupé and is powered by turbocharged.</p>
 
                             <div class="spacer-10"></div>
@@ -292,3 +289,8 @@
         </div>
         <!-- content close -->
 {% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/car-details.js') }}"></script>
+{% endblock %}
+

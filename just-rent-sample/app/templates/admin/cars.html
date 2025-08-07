@@ -14,11 +14,11 @@
                             <thead class="thead-dark">
                                 <tr>
                                     <th>名稱</th>
+                                    <th>品牌</th>
+                                    <th>車型</th>
                                     <th>座位數</th>
                                     <th>門數</th>
-                                    <th>車型</th>
-                                    <th>排氣量</th>
-                                    <th>品牌</th>
+                                    <th>馬力</th>
                                     <th>編輯</th>
                                     <th>觀看</th>
                                 </tr>
@@ -27,11 +27,12 @@
                                 {% for car in cars %}
                                 <tr>
                                     <td>{{car.name}}</td>
-                                    <td>{{car.seat_number}}</td>
-                                    <td>{{car.door_number}}</td>
-                                    <td>{{car.body}}</td>
-                                    <td>{{car.displacement}}</td>
                                     <td>{{car.brand}}</td>
+                                    <td>{{car.body}}</td>
+                                    <td>{{car.seats}}</td>
+                                    <td>{{car.doors}}</td>
+                                    <td>{{car.engine}}</td>
+
                                     <td><a href="{{ url_for('controller.admin_edit_car', car_id=car.id) }}">編輯</a></td>
                                     <td><a href="{{ url_for('controller.admin_view_car', car_id=car.id) }}">預覽</a></td>
                                 </tr>

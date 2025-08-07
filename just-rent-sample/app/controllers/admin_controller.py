@@ -29,36 +29,57 @@ def admin_cars():
 @role_required(['admin', 'superadmin']) 
 def admin_edit_car(car_id):
     if request.method == 'POST':
+        # 處理數值型欄位的輔助函數
+        def get_numeric_value(value, default=None):
+            if not value or value == 'None' or value == '':
+                return default
+            try:
+                return float(value)
+            except (ValueError, TypeError):
+                return default
+        
+        def get_int_value(value, default=None):
+            if not value or value == 'None' or value == '':
+                return default
+            try:
+                return int(value)
+            except (ValueError, TypeError):
+                return default
+        
         db.session.execute(text("""
             UPDATE cars SET
                 name = :name,
-                seat = :seat,
-                door = :door,
+                seats = :seats,
+                doors = :doors,
                 body = :body,
-                seat_number = :seat_number,
-                door_number = :door_number,
-                car_length = :car_length,
-                wheelbase = :wheelbase,
-                power_type = :power_type,
+                luggage_capacity = :luggage_capacity,
+                fuel_type = :fuel_type,
+                engine = :engine,
+                transmission = :transmission,
+                drive_type = :drive_type,
+                mileage = :mileage,
+                fuel_economy = :fuel_economy,
+                exterior_color = :exterior_color,
+                interior_color = :interior_color,
                 brand = :brand,
-                displacement = :displacement,
-                car_type = :car_type,
-                model = :model
+                year = :year
             WHERE id = :car_id
         """), {
-            'name': request.form['name'],
-            'seat': request.form['seat'],
-            'door': request.form['door'],
-            'body': request.form['body'],
-            'seat_number': request.form['seat_number'],
-            'door_number': request.form['door_number'],
-            'car_length': request.form['car_length'],
-            'wheelbase': request.form['wheelbase'],
-            'power_type': request.form['power_type'],
-            'brand': request.form['brand'],
-            'displacement': request.form['displacement'],
-            'car_type': request.form['car_type'],
-            'model': request.form['model'],
+            'name': request.form.get('name', ''),
+            'seats': get_int_value(request.form.get('seats')),
+            'doors': get_int_value(request.form.get('doors')),
+            'body': request.form.get('body', ''),
+            'luggage_capacity': get_int_value(request.form.get('luggage_capacity')),
+            'fuel_type': request.form.get('fuel_type', ''),
+            'engine': request.form.get('engine', ''),
+            'transmission': request.form.get('transmission', ''),
+            'drive_type': request.form.get('drive_type', '') if request.form.get('drive_type') != 'None' else '',
+            'mileage': get_numeric_value(request.form.get('mileage'), 0),
+            'fuel_economy': get_numeric_value(request.form.get('fuel_economy')),
+            'exterior_color': request.form.get('exterior_color', ''),
+            'interior_color': request.form.get('interior_color', ''),
+            'brand': request.form.get('brand', ''),
+            'year': get_int_value(request.form.get('year')),
             'car_id': car_id
         })
 
@@ -131,7 +152,7 @@ def admin_upload():
                 new_image = CarImages(
                     car_id=car.id,
                     image_url=file_url,
-                    created_by=current_user.username
+                    created_by_id=current_user.id
                 )
                 db.session.add(new_image)
                 successful_uploads += 1

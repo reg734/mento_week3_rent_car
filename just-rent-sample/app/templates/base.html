@@ -97,6 +97,6 @@
      <!-- JavaScript Files -->
     <script src="{{ url_for('static', filename='js/plugins.js') }}"></script>
     <script src="{{ url_for('static', filename='js/designesia.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/car.js') }}"></script>
+    {% block scripts %}{% endblock %}
   </body>
 </html>
