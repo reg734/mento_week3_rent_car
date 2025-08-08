@@ -21,6 +21,7 @@ class Car(db.Model):
     fuel_economy = db.Column(db.Float, nullable=True)
     exterior_color = db.Column(db.String(50), nullable=False, default='Unknown')
     interior_color = db.Column(db.String(50), nullable=False, default='Unknown')
+    daily_rate = db.Column(db.Float, nullable=False, default=0.0)
     
     created_at = db.Column(db.DateTime, nullable=False,
                             default=datetime.utcnow,

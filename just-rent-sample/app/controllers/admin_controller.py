@@ -62,7 +62,8 @@ def admin_edit_car(car_id):
                 exterior_color = :exterior_color,
                 interior_color = :interior_color,
                 brand = :brand,
-                year = :year
+                year = :year,
+                daily_rate = :daily_rate
             WHERE id = :car_id
         """), {
             'name': request.form.get('name', ''),
@@ -80,6 +81,7 @@ def admin_edit_car(car_id):
             'interior_color': request.form.get('interior_color', ''),
             'brand': request.form.get('brand', ''),
             'year': get_int_value(request.form.get('year')),
+            'daily_rate': get_numeric_value(request.form.get('daily_rate'), 0.0),
             'car_id': car_id
         })
 

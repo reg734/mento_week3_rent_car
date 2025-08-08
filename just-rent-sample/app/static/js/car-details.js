@@ -8,6 +8,9 @@ $(document).ready(function () {
             // 更新車子的名字
             $('#car-name').text(data.name);
 
+            // 更新車子的租金
+            $('#car-daily-rate').text(`$${data.daily_rate}`);
+
             // 簡單的圖片替換方法 - 不摧毀 Carousel
             updateCarouselImages(data.images);
 

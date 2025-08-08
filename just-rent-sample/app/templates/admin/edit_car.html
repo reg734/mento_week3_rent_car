@@ -117,6 +117,13 @@
                                 value="{{ car.interior_color }}"></div>
                     </div>
 
+                    <!-- 每日租金 -->
+                    <div class="row justify-content-center mb-3">
+                        <div class="col-md-3"><label for="daily_rate">每日租金</label></div>
+                        <div class="col-md-5"><input type="text" class="form-control" name="daily_rate"
+                                value="{{ car.daily_rate }}"></div>
+                    </div>
+
                     <div class="col-sm-12 d-flex justify-content-center">
                         <button type="submit" class="btn btn-primary me-1 mb-1">修改</button>
                         <a href="{{ url_for('controller.admin_index') }}"
