@@ -40,3 +40,25 @@ def get_car_by_id(car_id):
     car['images'] = [row._mapping['image_url'] for row in images_result]
 
     return jsonify(car)
+
+
+@bp.route('/api/cars/popular', methods=['GET'])
+def get_popular_cars():
+    sql = text("""
+        SELECT c.id, c.name, c.brand, c.year, c.body, c.seats, c.doors, c.luggage_capacity, c.fuel_type, c.engine, c.transmission, c.drive_type, c.mileage, c.fuel_economy, c.exterior_color, c.interior_color, c.daily_rate
+        FROM popular_cars pc
+        JOIN cars c ON pc.car_id = c.id
+        ORDER BY pc.sort_order ASC
+    """)
+    result = db.session.execute(sql)
+
+    cars_list = []
+    for row in result:
+        car = dict(row._mapping)
+        # 只取第一張圖片
+        image_sql = text('SELECT image_url FROM cars_images WHERE car_id = :car_id LIMIT 1')
+        image_result = db.session.execute(image_sql, {'car_id': car['id']}).fetchone()
+        car['image_url'] = image_result._mapping['image_url'] if image_result else None
+        cars_list.append(car)
+    
+    return jsonify(cars_list)
