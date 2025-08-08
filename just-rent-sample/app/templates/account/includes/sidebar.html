@@ -1,0 +1,24 @@
+                  <!-- 側邊選單 -->
+                  <div class="col-lg-3 mb30">
+                    <div class="card p-4 rounded-5">
+                      <div class="profile_avatar">
+                        <div class="profile_img">
+                          <img src="{{ url_for('static', filename='images/profile/1.jpg') }}" alt="">
+                        </div>
+                        <div class="profile_name">
+                          <h4>
+                            {{ current_user.username }}
+                            <span class="profile_username text-gray">{{ current_user.email }}</span>
+                          </h4>
+                        </div>
+                      </div>
+                      <div class="spacer-20"></div>
+                      <ul class="menu-col">
+                        <li><a href="{{ url_for('controller.dashboard') }}" class="{% if request.endpoint == 'controller.dashboard' %}active{% endif %}"><i class="fa fa-home"></i>Dashboard</a></li>
+                        <li><a href="{{ url_for('controller.profile') }}" class="{% if request.endpoint == 'controller.profile' %}active{% endif %}"><i class="fa fa-user"></i>My Profile</a></li>
+                        <li><a href="{{ url_for('controller.orders') }}" class="{% if request.endpoint == 'controller.orders' %}active{% endif %}"><i class="fa fa-calendar"></i>My Orders</a></li>
+                        <li><a href="{{ url_for('controller.favorite') }}" class="{% if request.endpoint == 'controller.favorite' %}active{% endif %}"><i class="fa fa-car"></i>My Favorite Cars</a></li>
+                        <li><a href="{{ url_for('controller.logout') }}" class="{% if request.endpoint == 'controller.logout' %}active{% endif %}"><i class="fa fa-sign-out"></i>Sign Out</a></li>
+                      </ul>
+                    </div>
+                  </div>

@@ -23,29 +23,7 @@
           <section id="section-settings" class="bg-gray-100">
               <div class="container">
                   <div class="row">
-                      <div class="col-lg-3 mb30">
-                          <div class="card p-4 rounded-5">
-                              <div class="profile_avatar">
-                                  <div class="profile_img">
-                                      <img src="{{ url_for('static', filename='images/profile/1.jpg') }}" alt="">
-                                  </div>
-                                  <div class="profile_name">
-                                      <h4>
-                                          Monica Lucas                                                
-                                          <span class="profile_username text-gray">monica@justrent.com</span>
-                                      </h4>
-                                  </div>
-                              </div>
-                              <div class="spacer-20"></div>
-                              <ul class="menu-col">
-                                  <li><a href="{{ url_for('controller.dashboard') }}"><i class="fa fa-home"></i>Dashboard</a></li>
-                                  <li><a href="{{ url_for('controller.profile') }}"><i class="fa fa-user"></i>My Profile</a></li>
-                                  <li><a href="{{ url_for('controller.orders') }}" class="active"><i class="fa fa-calendar"></i>My Orders</a></li>
-                                  <li><a href="{{ url_for('controller.favorite') }}"><i class="fa fa-car"></i>My Favorite Cars</a></li>
-                                  <li><a href="{{ url_for('controller.logout') }}"><i class="fa fa-sign-out"></i>Sign Out</a></li>
-                              </ul>
-                          </div>
-                      </div>
+                    {% include 'account/includes/sidebar.html' %}
 
                       <div class="col-lg-9">
 
