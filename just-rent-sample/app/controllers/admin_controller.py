@@ -189,3 +189,44 @@ def user_list():
     result = db.session.execute(sql)
     users = [row for row in result]
     return render_template('admin/user_list.html', users=users)
+
+@bp.route('/admin/popular_cars', methods=['GET', 'POST'])
+@role_required(['admin', 'superadmin']) 
+def popular_cars():
+    if request.method == 'POST':
+        action = request.form.get('action')
+        car_id = request.form.get('car_id') or request.form.get('carId')
+
+        if action == 'remove' and car_id and car_id.isdigit():
+            db.session.execute(text("DELETE FROM popular_cars WHERE car_id = :car_id"), {'car_id': int(car_id)})
+            db.session.commit()
+            flash('已移除熱門車款')
+            return redirect(url_for('controller.popular_cars'))
+
+        # 新增熱門車款（原本的新增邏輯）
+        if car_id and car_id.isdigit():
+            car_id = int(car_id)
+            sort_sql = text("SELECT COALESCE(MAX(sort_order), 0) + 1 AS next_order FROM popular_cars")
+            next_order = db.session.execute(sort_sql).scalar()
+            insert_sql = text("INSERT INTO popular_cars (car_id, sort_order, created_at) VALUES (:car_id, :sort_order, NOW())")
+            db.session.execute(insert_sql, {'car_id': car_id, 'sort_order': next_order})
+            db.session.commit()
+            flash('已成功加入熱門車款')
+            return redirect(url_for('controller.popular_cars'))
+
+    # GET: 查詢所有車輛
+    sql = text("SELECT id, name FROM cars")
+    result = db.session.execute(sql)
+    cars = [row for row in result]
+
+    # 查詢熱門車款
+    pop_sql = text("""
+        SELECT pc.car_id, pc.sort_order, c.name,
+            (SELECT image_url FROM cars_images ci WHERE ci.car_id = c.id LIMIT 1) AS image_url
+        FROM popular_cars pc
+        JOIN cars c ON pc.car_id = c.id
+        ORDER BY pc.sort_order ASC
+    """)
+    pop_result = db.session.execute(pop_sql)
+    popular_cars = [row for row in pop_result]
+    return render_template('admin/popular_cars.html', cars=cars, popular_cars=popular_cars)
