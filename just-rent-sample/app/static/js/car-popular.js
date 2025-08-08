@@ -1,6 +1,6 @@
 $(document).ready(function () {
   $.ajax({
-    url: '/api/cars/popular', 
+    url: '/api/cars/popular',
     method: 'GET',
     success: function (data) {
       const container = $('#items-carousel');
@@ -17,8 +17,8 @@ $(document).ready(function () {
               <div class="d-info">
                 <div class="d-text">
                   <h4>${car.name}</h4>
-                  <div class="d-item_like">
-                    <i class="fa fa-heart"></i><span>${Math.floor(Math.random() * 100)}</span>
+                  <div class="d-item_like" data-car-id="${car.id}">
+                    <i class="fa fa-heart"></i><span>0</span>
                   </div>
                   <div class="d-atr-group">
                     <span class="d-atr"><img src="/static/images/icons/1.svg" alt="">${car.seats}</span>
@@ -34,7 +34,7 @@ $(document).ready(function () {
               </div>
             </div>
           </div>`;
-        
+
         container.append(html);
       });
 
@@ -50,6 +50,7 @@ $(document).ready(function () {
           992: { items: 3 }
         }
       });
+      $(document).trigger('cars-loaded');
     },
     error: function () {
       alert("載入車輛資料失敗");

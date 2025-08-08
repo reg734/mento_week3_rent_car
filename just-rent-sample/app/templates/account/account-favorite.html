@@ -1,120 +1,106 @@
-{% extends "base.html"  %}
+{% extends "base.html" %}
 {% block content %}
-        <!-- content begin -->
-        <div class="no-bottom no-top zebra" id="content">
-            <div id="top"></div>
-            
-            <!-- section begin -->
-            <section id="subheader" class="jarallax text-light">
-                <img src="{{ url_for('static', filename='images/background/14.jpg') }}" class="jarallax-img" alt="">
-                    <div class="center-y relative text-center">
-                        <div class="container">
-                            <div class="row">
-                                <div class="col-md-12 text-center">
-									<h1>My Favorite Cars</h1>
-                                </div>
-                                <div class="clearfix"></div>
-                            </div>
-                        </div>
+<style>
+.favorite-heart-wrapper .d-item_like:hover {
+    transform: scale(1.1);
+}
+
+.favorite-heart-wrapper .d-item_like:active {
+    transform: scale(0.95);
+}
+
+.de-item-list {
+    transition: opacity 0.3s;
+}
+
+.de-item-list.removing {
+    opacity: 0.5;
+}
+</style>
+
+<!-- content begin -->
+<div class="no-bottom no-top zebra" id="content">
+    <div id="top"></div>
+
+    <!-- section begin -->
+    <section id="subheader" class="jarallax text-light">
+        <img src="{{ url_for('static', filename='images/background/14.jpg') }}" class="jarallax-img" alt="">
+        <div class="center-y relative text-center">
+            <div class="container">
+                <div class="row">
+                    <div class="col-md-12 text-center">
+                        <h1>My Favorite Cars</h1>
                     </div>
-            </section>
-            <!-- section close -->
-
-            <section id="section-settings" class="bg-gray-100">
-                <div class="container">
-                    <div class="row">
-                        {% include 'account/includes/sidebar.html' %}
-
-                        <div class="col-lg-9">
-                            <div class="de-item-list no-border mb30">
-                                <div class="d-img">
-                                    <img src="{{ url_for('static', filename='images/cars/jeep-renegade.jpg') }}" class="img-fluid" alt="">
-                                </div>
-                                <div class="d-info">
-                                    <div class="d-text">
-                                        <h4>Jeep Renegade</h4>
-                                        <div class="d-atr-group">
-                                            <ul class="d-atr">
-                                                <li><span>Seats:</span>4</li>
-                                                <li><span>Luggage:</span>2</li>
-                                                <li><span>Doors:</span>4</li>
-                                                <li><span>Fuel:</span>Petrol</li>
-                                                <li><span>Horsepower:</span>500</li>
-                                                <li><span>Engine:</span>3000</li>
-                                                <li><span>Drive:</span>4x4</li>
-                                                <li><span>Type:</span>Hatchback</li>
-                                            </ul>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="d-price">
-                                    Daily rate from <span>$265</span>
-                                    <a class="btn-main" href="{{ url_for('controller.car_detail', car_id=1) }}">Rent Now</a>
-                                </div>
-                                <div class="clearfix"></div>
-                            </div>
-
-                            <div class="de-item-list no-border mb30">
-                                <div class="d-img">
-                                    <img src="{{ url_for('static', filename='images/cars/bmw-m5.jpg') }}" class="img-fluid" alt="">
-                                </div>
-                                <div class="d-info">
-                                    <div class="d-text">
-                                        <h4>BMW M2</h4>
-                                        <div class="d-atr-group">
-                                            <ul class="d-atr">
-                                                <li><span>Seats:</span>4</li>
-                                                <li><span>Luggage:</span>2</li>
-                                                <li><span>Doors:</span>4</li>
-                                                <li><span>Fuel:</span>Petrol</li>
-                                                <li><span>Horsepower:</span>500</li>
-                                                <li><span>Engine:</span>3000</li>
-                                                <li><span>Drive:</span>4x4</li>
-                                                <li><span>Type:</span>Hatchback</li>
-                                            </ul>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="d-price">
-                                    Daily rate from <span>$244</span>
-                                    <a class="btn-main" href="{{ url_for('controller.car_detail', car_id=1) }}">Rent Now</a>
-                                </div>
-                                <div class="clearfix"></div>
-                            </div>
-
-                            <div class="de-item-list no-border mb30">
-                                <div class="d-img">
-                                    <img src="{{ url_for('static', filename='images/cars/ferrari-enzo.jpg') }}" class="img-fluid" alt="">
-                                </div>
-                                <div class="d-info">
-                                    <div class="d-text">
-                                        <h4>Ferarri Enzo</h4>
-                                        <div class="d-atr-group">
-                                            <ul class="d-atr">
-                                                <li><span>Seats:</span>4</li>
-                                                <li><span>Luggage:</span>2</li>
-                                                <li><span>Doors:</span>4</li>
-                                                <li><span>Fuel:</span>Petrol</li>
-                                                <li><span>Horsepower:</span>500</li>
-                                                <li><span>Engine:</span>3000</li>
-                                                <li><span>Drive:</span>4x4</li>
-                                                <li><span>Type:</span>Hatchback</li>
-                                            </ul>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="d-price">
-                                    Daily rate from <span>$167</span>
-                                    <a class="btn-main" href="{{ url_for('controller.car_detail', car_id=1) }}">Rent Now</a>
-                                </div>
-                                <div class="clearfix"></div>
-                            </div>
-                        </div>
-                    </div>
+                    <div class="clearfix"></div>
                 </div>
-            </section>
-			
-			
+            </div>
         </div>
-        <!-- content close -->
-{% endblock %} 
+    </section>
+    <!-- section close -->
+
+    <section id="section-settings" class="bg-gray-100">
+        <div class="container">
+            <div class="row">
+                {% include 'account/includes/sidebar.html' %}
+
+                <div class="col-lg-9">
+                    {% for car in favorite_cars %}
+                    <div class="de-item-list no-border mb30" style="position: relative;">
+                        <!-- 愛心按鈕放在右上角 -->
+                        <div class="favorite-heart-wrapper" style="position: absolute; top: 20px; right: 20px; z-index: 10;">
+                            <div class="d-item_like" data-car-id="{{ car.id }}" 
+                                 style="width: 50px; height: 50px;
+                                        background: white; display: flex; align-items: center; justify-content: center; 
+                                        cursor: pointer; transition: all 0.3s;">
+                                <i class="fa fa-heart" style="color: red; font-size: 24px;"></i>
+                            </div>
+                        </div>
+                        
+                        <div class="d-img">
+                            <img src="{{ car.image_url }}" class="img-fluid" alt="{{ car.name }}">
+                        </div>
+                        <div class="d-info">
+                            <div class="d-text">
+                                <h4>{{ car.name }}</h4>
+                                <div class="d-atr-group">
+                                    <ul class="d-atr">
+                                        <li><span>Seats:</span>{{ car.seats }}</li>
+                                        <li><span>Luggage:</span>{{ car.luggage_capacity }}</li>
+                                        <li><span>Doors:</span>{{ car.doors }}</li>
+                                        <li><span>Fuel:</span>{{ car.fuel_type }}</li>
+                                        <li><span>Year:</span>{{ car.year }}</li>
+                                        <li><span>Engine:</span>{{ car.engine }}</li>
+                                        <li><span>Drive:</span>{{ car.drive_type }}</li>
+                                        <li><span>Type:</span>{{ car.body }}</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="d-price">
+                            Daily rate from <span>${{ car.daily_rate }}</span>
+                            <a class="btn-main" href="{{ url_for('controller.car_detail', car_id=car.id) }}">Rent Now</a>
+                        </div>
+                        <div class="clearfix"></div>
+                    </div>
+                    {% endfor %}
+
+                    {% if not favorite_cars %}
+                    <div class="alert alert-info">
+                        <p>您還沒有收藏任何車輛。</p>
+                        <a href="{{ url_for('controller.cars') }}" class="btn btn-primary">瀏覽車輛</a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </section>
+
+
+</div>
+<!-- content close -->
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', 
+filename='js/account-favorite.js') }}"></script>
+{% endblock %}

@@ -1,6 +1,6 @@
 from app.controllers import bp
 from flask import render_template, redirect ,request, url_for
-from flask_login import login_required, login_user
+from flask_login import login_required, login_user, current_user
 
 
 
@@ -43,7 +43,40 @@ def orders():
 @bp.route('/account/favorite')
 @login_required
 def favorite():
-    return render_template('/account/account-favorite.html', title='My Favorite Cars')
+    from app.models import MyFavorites, Car
+    from app import db
+    
+    # 取得收藏車輛
+    favorite_cars_query = db.session.query(Car).join(
+        MyFavorites,
+        (MyFavorites.car_id == Car.id) & 
+        (MyFavorites.user_id == current_user.id)
+    ).all()
+    
+    # 準備結果
+    favorite_cars = []
+    for car in favorite_cars_query:
+        # 使用關聯取得圖片（car.images 是由 backref 產生的）
+        image_url = car.images[0].image_url if car.images else '/static/images/default-car.jpg'
+        
+        favorite_cars.append({
+            'id': car.id,
+            'name': car.name,
+            'image_url': image_url,
+            'seats': car.seats,
+            'luggage_capacity': car.luggage_capacity,
+            'doors': car.doors,
+            'fuel_type': getattr(car, 'fuel_type', 'Petrol'),
+            'year': getattr(car, 'year', 2000),
+            'engine': getattr(car, 'engine', 3000),
+            'drive_type': getattr(car, 'drive_type', '4x4'),
+            'body': car.body,
+            'daily_rate': getattr(car, 'daily_rate', 265)
+        })
+    
+    return render_template('/account/account-favorite.html',
+                         title='My Favorite Cars',
+                         favorite_cars=favorite_cars)
 
 @bp.route('/login', methods=['GET', 'POST'])
 def login():
