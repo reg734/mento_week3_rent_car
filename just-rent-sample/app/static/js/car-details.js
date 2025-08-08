@@ -28,147 +28,51 @@ $(document).ready(function () {
 });
 
 /**
- * 更新輪播圖片 - 簡單版本
+ * 更新輪播圖片 - 摧毀重做版本
  * @param {Array} newImages - 新的圖片 URL 陣列
  */
 function updateCarouselImages(newImages) {
-    // 檢查是否有有效的圖片資料
     if (!newImages || !Array.isArray(newImages) || newImages.length === 0) {
         console.warn('沒有提供有效的圖片資料');
         return;
     }
 
-    const carouselImages = $('#slider-carousel .item img');
-
-    // 如果 Carousel 還沒初始化，先初始化
-    if (!$('#slider-carousel').hasClass('owl-loaded')) {
-        initializeCarousel();
-    }
-
-    // 1. 更新主輪播圖片
-    carouselImages.each(function (index) {
-        const img = $(this);
-        const newSrc = newImages[index] || newImages[0]; // 如果沒有對應圖片，使用第一張
-
-        // 設定新的圖片 src
-        img.attr('src', newSrc);
-        img.attr('alt', `Car image ${index + 1}`);
-
-        // 加入錯誤處理
-        img.off('error').on('error', function () {
-            console.warn('圖片載入失敗:', newSrc);
-            // 載入失敗時使用預設圖片
-            this.src = `/static/images/car-single/${index + 1}.jpg`;
-        });
-
-        // 載入成功時的處理
-        img.off('load').on('load', function () {
-            console.log('圖片載入成功:', newSrc);
-        });
-    });
-
-    // 2. 更新縮圖按鈕的圖片
-    updateThumbnailImages(newImages);
-
-    // 如果 API 提供的圖片比現有的多，需要添加新的項目
-    if (newImages.length > carouselImages.length) {
-        const slider = $('#slider-carousel');
-
-        for (let i = carouselImages.length; i < newImages.length; i++) {
-            slider.append(`
-                <div class="item">
-                    <img src="${newImages[i]}" 
-                         alt="Car image ${i + 1}"
-                         onerror="this.src='/static/images/car-single/1.jpg'">
-                </div>
-            `);
-        }
-
-        // 刷新 Carousel 以包含新添加的項目
-        slider.trigger('refresh.owl.carousel');
-
-        // 同時更新縮圖（如果有新增項目）
-        updateThumbnailImages(newImages);
-    }
-
-    console.log('已更新輪播圖片和縮圖，共', Math.max(newImages.length, carouselImages.length), '張');
-}
-
-/**
- * 更新縮圖按鈕的圖片
- * @param {Array} newImages - 新的圖片 URL 陣列
- */
-function updateThumbnailImages(newImages) {
-    const thumbnailImages = $('.owl-thumbs .owl-thumb-item img');
-
-    // 更新現有的縮圖
-    thumbnailImages.each(function (index) {
-        const img = $(this);
-        const newSrc = newImages[index] || newImages[0];
-
-        img.attr('src', newSrc);
-        img.attr('alt', `Thumbnail ${index + 1}`);
-
-        // 縮圖的錯誤處理
-        img.off('error').on('error', function () {
-            console.warn('縮圖載入失敗:', newSrc);
-            this.src = `/static/images/car-single/${index + 1}.jpg`;
-        });
-    });
-
-    // 如果需要添加新的縮圖按鈕
-    if (newImages.length > thumbnailImages.length) {
-        const thumbsContainer = $('.owl-thumbs');
-
-        for (let i = thumbnailImages.length; i < newImages.length; i++) {
-            const isActive = i === 0 && thumbnailImages.length === 0 ? 'active' : '';
-            thumbsContainer.append(`
-                <button class="owl-thumb-item ${isActive}">
-                    <img src="${newImages[i]}" 
-                         alt="Thumbnail ${i + 1}"
-                         onerror="this.src='/static/images/car-single/1.jpg'">
-                </button>
-            `);
-        }
-    }
-
-    // 如果 API 圖片較少，隱藏多餘的縮圖按鈕
-    if (newImages.length < thumbnailImages.length) {
-        $('.owl-thumbs .owl-thumb-item').slice(newImages.length).hide();
-    } else {
-        // 確保所有需要的縮圖按鈕都顯示
-        $('.owl-thumbs .owl-thumb-item').slice(0, newImages.length).show();
-    }
-
-    console.log('已更新', Math.min(newImages.length, thumbnailImages.length), '個縮圖按鈕');
-}
-
-/**
- * 初始化 Owl Carousel（如果尚未初始化）
- */
-function initializeCarousel() {
     const slider = $('#slider-carousel');
 
-    if (!slider.hasClass('owl-loaded')) {
-        slider.owlCarousel({
-            items: 1,
-            loop: true,
-            autoplay: false,
-            autoplayHoverPause: true,
-            nav: true,
-            navText: [
-                '<i class="fa fa-chevron-left"></i>',
-                '<i class="fa fa-chevron-right"></i>'
-            ],
-            dots: true,
-            responsive: {
-                0: { items: 1 },
-                600: { items: 1 },
-                1000: { items: 1 }
-            }
-        });
-        console.log('Carousel 初始化完成');
+    // 1. 摧毀原本的 Carousel
+    if (slider.hasClass('owl-loaded')) {
+        slider.trigger('destroy.owl.carousel');
+        slider.removeClass('owl-loaded owl-drag');
+        slider.find('.owl-stage-outer').children().unwrap();
+        slider.html(''); // 清空內容
     }
+
+    // 2. 重新加入新的圖片項目
+    newImages.forEach((imgUrl, index) => {
+        slider.append(`
+            <div class="item">
+                <img src="${imgUrl}" alt="Car image ${index + 1}"
+                     onerror="this.src='/static/images/car-single/1.jpg'">
+            </div>
+        `);
+    });
+
+    // 3. 重新初始化 Carousel
+    slider.owlCarousel({
+        items: 1,
+        loop: true,
+        autoplay: false,
+        autoplayHoverPause: true,
+        nav: false,
+        dots: false,
+        responsive: {
+            0: { items: 1 },
+            600: { items: 1 },
+            1000: { items: 1 }
+        }
+    });
+
+    console.log('已摧毀重建輪播圖片和縮圖，共', newImages.length, '張');
 }
 
 /**
