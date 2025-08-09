@@ -18,18 +18,24 @@ def get_my_favorites():
 @bp.route('/api/my_favorites/status', methods=['GET'])
 @login_required
 def favorites_status():
-      car_ids = request.args.getlist('car_ids')
-      result = []
-      for car_id in car_ids:
-          count = MyFavorites.query.filter_by(car_id=car_id).count()
-          is_favorite = MyFavorites.query.filter_by(car_id=car_id,
-  user_id=current_user.id).first() is not None
-          result.append({
-              'car_id': int(car_id),
-              'count': count,
-              'is_favorite': is_favorite
-          })
-      return jsonify(result)
+    car_ids = [int(cid) for cid in request.args.getlist('car_ids')]
+    # 查詢所有 car_id 的收藏數量
+    counts = {cid: 0 for cid in car_ids}
+    for row in db.session.query(MyFavorites.car_id, db.func.count(MyFavorites.id)).filter(MyFavorites.car_id.in_(car_ids)).group_by(MyFavorites.car_id):
+        counts[row[0]] = row[1]
+    # 查詢目前使用者收藏的所有 car_id
+    user_favs = set(
+        cid for cid, in db.session.query(MyFavorites.car_id).filter_by(user_id=current_user.id).filter(MyFavorites.car_id.in_(car_ids)).all()
+    )
+    # 組合結果
+    result = []
+    for cid in car_ids:
+        result.append({
+            'car_id': cid,
+            'count': counts[cid],
+            'is_favorite': cid in user_favs
+        })
+    return jsonify(result)
 
 @bp.route('/api/my_favorites', methods=['POST'])
 @login_required

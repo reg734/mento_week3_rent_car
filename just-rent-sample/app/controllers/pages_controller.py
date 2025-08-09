@@ -1,6 +1,6 @@
 from app.controllers import bp
 from flask import render_template, redirect ,request, url_for
-from flask_login import login_required, login_user, current_user
+from flask_login import login_user, current_user, login_required
 
 
 
