@@ -1,6 +1,8 @@
 from app.controllers import bp
 from flask import render_template, redirect ,request, url_for
 from flask_login import login_user, current_user, login_required
+from app.models import MyFavorites, Car
+from app import db
 
 
 
@@ -43,8 +45,6 @@ def orders():
 @bp.route('/account/favorite')
 @login_required
 def favorite():
-    from app.models import MyFavorites, Car
-    from app import db
     
     # 取得收藏車輛
     favorite_cars_query = db.session.query(Car).join(
