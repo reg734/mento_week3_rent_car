@@ -9,7 +9,7 @@ $(document).ready(function () {
             $('#car-name').text(data.name);
 
             // 更新車子的租金
-            $('#car-daily-rate').text(`$${data.daily_rate}`);
+            $('#car-daily-rate').text(`$${Number(data.price).toFixed(2)}`);
 
             // 簡單的圖片替換方法 - 不摧毀 Carousel
             updateCarouselImages(data.images);

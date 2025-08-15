@@ -8,7 +8,7 @@ class Price(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     level = db.Column(db.Integer, nullable=False)
     type = db.Column(db.String(50), nullable=False, default='normal')
-    price = db.Column(db.Float, nullable=False, default=0.0)
+    price = db.Column(db.Numeric(10, 2), nullable=False, default=0)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
 
     # relationship: 取得所有該等級的車

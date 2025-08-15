@@ -32,7 +32,7 @@ $(document).ready(function () {
                             </div>
                         </div>
                         <div class="d-price">
-                            Daily rate from <span>$${car.daily_rate}</span>
+                            Daily rate from <span>$${Number(car.price).toFixed(2)}</span>
                             <a class="btn-main" href="/cars/${car.id}">Rent Now</a>
                         </div>
                         <div class="clearfix"></div>
