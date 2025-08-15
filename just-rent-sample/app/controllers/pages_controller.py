@@ -1,7 +1,7 @@
 from app.controllers import bp
 from flask import render_template, redirect ,request, url_for
 from flask_login import login_user, current_user, login_required
-from app.models import MyFavorites, Car
+from app.models import MyFavorite, Car
 from app import db
 
 
@@ -48,9 +48,9 @@ def favorite():
     
     # 取得收藏車輛
     favorite_cars_query = db.session.query(Car).join(
-        MyFavorites,
-        (MyFavorites.car_id == Car.id) & 
-        (MyFavorites.user_id == current_user.id)
+        MyFavorite,
+        (MyFavorite.car_id == Car.id) & 
+        (MyFavorite.user_id == current_user.id)
     ).all()
     
     # 準備結果

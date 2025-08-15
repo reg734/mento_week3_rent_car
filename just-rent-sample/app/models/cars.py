@@ -21,7 +21,7 @@ class Car(db.Model):
     fuel_economy = db.Column(db.Float, nullable=True)
     exterior_color = db.Column(db.String(50), nullable=False, default='Unknown')
     interior_color = db.Column(db.String(50), nullable=False, default='Unknown')
-    daily_rate = db.Column(db.Float, nullable=False, default=0.0)
+    car_level = db.Column(db.Integer, nullable=False, default=1)
     
     created_at = db.Column(db.DateTime, nullable=False,
                             default=datetime.utcnow,
@@ -31,5 +31,5 @@ class Car(db.Model):
                             server_default=db.func.current_timestamp(),
                             onupdate=datetime.utcnow)
 
-    def __repr__(self):
-        return f"<Car(name={self.name}, brand={self.brand}, model={self.model}, year={self.year}, body={self.body}, seats={self.seats}, doors={self.doors}, luggage_capacity={self.luggage_capacity}, fuel_type={self.fuel_type}, engine={self.engine}, transmission={self.transmission}, drive_type={self.drive_type}, mileage={self.mileage}, fuel_economy={self.fuel_economy}, exterior_color={self.exterior_color}, interior_color={self.interior_color})>"
+def __repr__(self):
+    return f"<Car(name={self.name}, brand={self.brand}, year={self.year}, body={self.body}, seats={self.seats}, doors={self.doors}, luggage_capacity={self.luggage_capacity}, fuel_type={self.fuel_type}, engine={self.engine}, transmission={self.transmission}, drive_type={self.drive_type}, mileage={self.mileage}, fuel_economy={self.fuel_economy}, exterior_color={self.exterior_color}, interior_color={self.interior_color}, car_level={self.car_level})>"

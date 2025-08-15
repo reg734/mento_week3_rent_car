@@ -4,7 +4,7 @@ from app import db
 from sqlalchemy import text
 from app.services.s3_service import S3Service
 from app.utils.role_decorators import role_required
-from app.models.car_images import CarImages
+from app.models.car_images import CarImage
 from flask_login import current_user
 
 
@@ -151,7 +151,7 @@ def admin_upload():
 
             if file_url:
                 # 儲存到資料庫
-                new_image = CarImages(
+                new_image = CarImage(
                     car_id=car.id,
                     image_url=file_url,
                     created_by_id=current_user.id

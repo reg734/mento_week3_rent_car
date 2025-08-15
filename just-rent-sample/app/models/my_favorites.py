@@ -1,6 +1,6 @@
 from app import db
 
-class MyFavorites(db.Model):
+class MyFavorite(db.Model):
     __tablename__ = 'my_favorites'
     id = db.Column(db.Integer, primary_key=True)
     car_id = db.Column(db.Integer, db.ForeignKey('cars.id'), nullable=False)

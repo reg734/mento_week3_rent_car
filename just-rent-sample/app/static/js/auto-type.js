@@ -1,6 +1,6 @@
 $(document).ready(function() {
   // 假設你有一個地址 API，這裡用靜態資料範例
-  var addresses = ['台北站', '台中站', '高雄市站'];
+  var addresses = ['台北站', '台中站', '高雄站'];
 
   var addressSource = new Bloodhound({
     datumTokenizer: Bloodhound.tokenizers.whitespace,

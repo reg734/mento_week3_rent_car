@@ -5,7 +5,7 @@ from sqlalchemy import text
 
 @bp.route('/api/cars', methods=['GET'])
 def get_cars():
-    sql = text('SELECT id, name, brand, year, body, seats, doors, luggage_capacity, fuel_type, engine, transmission, drive_type, mileage, fuel_economy, exterior_color, interior_color, daily_rate FROM cars')
+    sql = text('SELECT * FROM cars')
     result = db.session.execute(sql)
 
     cars_list = []
@@ -24,7 +24,7 @@ def get_cars():
 @bp.route('/api/cars/<int:car_id>', methods=['GET'])
 def get_car_by_id(car_id):
     # 獲取車輛基本資訊
-    car_sql = text('SELECT id, name, brand, year, body, seats, doors, luggage_capacity, fuel_type, engine, transmission, drive_type, mileage, fuel_economy, exterior_color, interior_color, daily_rate FROM cars WHERE id = :car_id')
+    car_sql = text('SELECT * FROM cars WHERE id = :car_id')
     car_result = db.session.execute(car_sql, {'car_id': car_id}).fetchone()
 
     if not car_result:
@@ -45,10 +45,13 @@ def get_car_by_id(car_id):
 @bp.route('/api/cars/popular', methods=['GET'])
 def get_popular_cars():
     sql = text("""
-        SELECT c.id, c.name, c.brand, c.year, c.body, c.seats, c.doors, c.luggage_capacity, c.fuel_type, c.engine, c.transmission, c.drive_type, c.mileage, c.fuel_economy, c.exterior_color, c.interior_color, c.daily_rate
-        FROM popular_cars pc
-        JOIN cars c ON pc.car_id = c.id
-        ORDER BY pc.sort_order ASC
+  SELECT c.id, c.name, c.brand, c.year, c.body, c.seats, c.doors,
+         c.luggage_capacity, c.fuel_type, c.engine, c.transmission,
+         c.drive_type, c.mileage, c.fuel_economy, c.exterior_color,
+         c.interior_color, c.car_level
+  FROM popular_cars pc
+  JOIN cars c ON pc.car_id = c.id
+  ORDER BY pc.sort_order ASC
     """)
     result = db.session.execute(sql)
 
