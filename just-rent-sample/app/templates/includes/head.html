@@ -21,3 +21,68 @@
     <link id="colors" href="{{ url_for('static', filename='css/colors/scheme-01.css') }}" rel="stylesheet" type="text/css">
      <!-- countdown -->
      <link id="colors" href="{{ url_for('static', filename='css/jquery.countdown.css') }}" rel="stylesheet" type="text/css" />
+     
+     <!-- Flash Messages CSS -->
+     <style>
+        .flash-messages-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 9999;
+            padding: 15px;
+            pointer-events: none; /* 允許點擊穿透到下方元素 */
+        }
+        
+        .flash-message {
+            pointer-events: auto; /* 恢復 flash 訊息本身的點擊事件 */
+            margin-bottom: 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            border: none;
+            border-radius: 8px;
+            animation: slideInDown 0.3s ease-out;
+        }
+        
+        .flash-message .btn-close {
+            filter: brightness(0) invert(1); /* 讓關閉按鈕在深色背景上可見 */
+        }
+        
+        @keyframes slideInDown {
+            from {
+                transform: translateY(-100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+        
+        /* 自動隱藏動畫 */
+        .flash-message.auto-hide {
+            animation: slideOutUp 0.3s ease-in forwards;
+            animation-delay: 4s; /* 4秒後開始隱藏 */
+        }
+        
+        @keyframes slideOutUp {
+            from {
+                transform: translateY(0);
+                opacity: 1;
+            }
+            to {
+                transform: translateY(-100%);
+                opacity: 0;
+            }
+        }
+        
+        /* 響應式設計 */
+        @media (max-width: 768px) {
+            .flash-messages-container {
+                padding: 10px;
+            }
+            
+            .flash-message {
+                font-size: 14px;
+            }
+        }
+     </style>

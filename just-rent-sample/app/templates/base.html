@@ -105,6 +105,21 @@
         </div>
       </div>
     </header>
+    
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div class="flash-messages-container">
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show flash-message" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+    
     {% block content %}{% endblock %}
     {% include 'includes/back-to-top.html' %}
     {% include 'includes/footer.html' %}
@@ -112,6 +127,26 @@
   <!-- JavaScript Files -->
   <script src="{{ url_for('static', filename='js/plugins.js') }}"></script>
   <script src="{{ url_for('static', filename='js/designesia.js') }}"></script>
+  
+  <!-- Flash Messages JavaScript -->
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // 自動隱藏 flash 訊息
+        const flashMessages = document.querySelectorAll('.flash-message');
+        flashMessages.forEach(function(message) {
+            // 5秒後自動隱藏（除了錯誤訊息）
+            if (!message.classList.contains('alert-danger')) {
+                setTimeout(function() {
+                    message.style.animation = 'slideOutUp 0.3s ease-in forwards';
+                    setTimeout(function() {
+                        message.remove();
+                    }, 300);
+                }, 5000);
+            }
+        });
+    });
+  </script>
+  
   {% block scripts %}{% endblock %}
 </body>
 
