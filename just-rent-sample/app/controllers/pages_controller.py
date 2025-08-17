@@ -93,7 +93,7 @@ def booking():
         body_type_mapping = {
             'Hatchback': '掀背車',
             'Sedan': '轎車',
-            'SUV': 'SUV'
+            'SUV': '休旅車'
         }
         
         # 查詢可用車輛
