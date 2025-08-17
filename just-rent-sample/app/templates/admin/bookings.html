@@ -1,0 +1,171 @@
+{% extends "admin/base.html" %}
+{% block content %}
+<div id="main">
+    <header class="mb-3">
+        <h1>訂單管理</h1>
+    </header>
+    <!-- 預定訂單 -->
+    <section class="section">
+        <div class="row" id="table-striped">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h4 class="card-title">預定訂單</h4>
+                    </div>
+                    <div class="card-content">
+                        <div class="card-body">
+                        </div>
+                        <!-- table striped -->
+                        <div class="table-responsive">
+                            <table class="table table-striped mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>訂單編號</th>
+                                        <th>用戶名稱(id)</th>
+                                        <th>車輛名稱(id)</th>
+                                        <th>取車地點</th>
+                                        <th>還車地點</th>
+                                        <th>取車日期</th>
+                                        <th>還車日期</th>
+                                        <th>狀態</th>
+                                        <th>取消</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for booking in bookings %}
+                                    {% if booking.status == 'scheduled' %}
+                                    <tr>
+                                        <td>{{booking.id}}</td>
+                                        <td>{{booking.user_name}} (id:{{booking.user_id}})</td>
+                                        <td>{{booking.car_name}} (id:{{booking.car_id}})</td>
+                                        <td>{{booking.pickup_location}}</td>
+                                        <td>{{booking.dropoff_location}}</td>
+                                        <td>{{ booking.pick_up_time.strftime('%Y-%m-%d %H:%M') if booking.pick_up_time else '' }}</td>
+                                        <td>{{ booking.return_time.strftime('%Y-%m-%d %H:%M') if booking.return_time else '' }}</td>
+                                        <td>{{booking.status}}</td>
+                                        <td>
+                                            <form action="{{ url_for('controller.cancel_booking', booking_id=booking.id) }}" method="POST" onsubmit="return confirm('確定要取消此訂單嗎？');">
+                                                <button type="submit" class="btn btn-danger">取消</button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                    {% endif %}
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    <!-- 已完成訂單 -->
+    <section class="section">
+        <div class="row" id="table-striped">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h4 class="card-title">已完成訂單</h4>
+                    </div>
+                    <div class="card-content">
+                        <div class="card-body">
+                        </div>
+                        <!-- table striped -->
+                        <div class="table-responsive">
+                            <table class="table table-striped mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>訂單編號</th>
+                                        <th>用戶名稱(id)</th>
+                                        <th>車輛名稱(id)</th>
+                                        <th>取車地點</th>
+                                        <th>還車地點</th>
+                                        <th>取車日期</th>
+                                        <th>還車日期</th>
+                                        <th>狀態</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for booking in bookings %}
+                                    {% if booking.status == 'completed' %}
+                                    <tr>
+                                        <td>{{booking.id}}</td>
+                                        <td>{{booking.user_name}} (id:{{booking.user_id}})</td>
+                                        <td>{{booking.car_name}} (id:{{booking.car_id}})</td>
+                                        <td>{{booking.pickup_location}}</td>
+                                        <td>{{booking.dropoff_location}}</td>
+                                        <td>{{booking.pickup_time}}</td>
+                                        <td>{{booking.dropoff_time}}</td>
+                                        <td>{{booking.status}}</td>
+                                    </tr>
+                                    {% endif %}
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    <!-- 取消訂單 -->
+    <section class="section">
+        <div class="row" id="table-striped">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h4 class="card-title">已取消訂單</h4>
+                    </div>
+                    <div class="card-content">
+                        <div class="card-body">
+                        </div>
+                        <!-- table striped -->
+                        <div class="table-responsive">
+                            <table class="table table-striped mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>訂單編號</th>
+                                        <th>用戶名稱(id)</th>
+                                        <th>車輛名稱(id)</th>
+                                        <th>取車地點</th>
+                                        <th>還車地點</th>
+                                        <th>取車日期</th>
+                                        <th>還車日期</th>
+                                        <th>狀態</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for booking in bookings %}
+                                    {% if booking.status == 'cancelled' %}
+                                    <tr>
+                                        <td>{{booking.id}}</td>
+                                        <td>{{booking.user_name}} (id:{{booking.user_id}})</td>
+                                        <td>{{booking.car_name}} (id:{{booking.car_id}})</td>
+                                        <td>{{booking.pickup_location}}</td>
+                                        <td>{{booking.dropoff_location}}</td>
+                                        <td>{{ booking.pick_up_time.strftime('%Y-%m-%d %H:%M') if booking.pick_up_time else '' }}</td>
+                                        <td>{{ booking.return_time.strftime('%Y-%m-%d %H:%M') if booking.return_time else '' }}</td>
+                                        <td>{{booking.status}}</td>
+                                    </tr>
+                                    {% endif %}
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    <footer>
+        <div class="footer clearfix mb-0 text-muted">
+            <div class="float-start">
+                <p>2025 © rent_car</p>
+            </div>
+            <div class="float-end">
+
+            </div>
+        </div>
+    </footer>
+</div>
+{% endblock%}

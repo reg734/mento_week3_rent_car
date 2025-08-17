@@ -47,8 +47,8 @@
 
                 <li class="sidebar-item {% if request.endpoint == 'controller.admin_index' %}active{% endif %}">
                     <a href="{{ url_for('controller.admin_index') }}" class="sidebar-link">
-                        <i class="bi bi-grid-fill"></i>
-                        <span>Cars</span>
+                        <i class="bi bi-car-front-fill"></i>
+                        <span>車輛管理</span>
                     </a>
                 </li>
                 <li class="sidebar-item {% if request.endpoint == 'controller.admin_upload' %}active{% endif %}">
@@ -61,6 +61,12 @@
                     <a href="{{ url_for('controller.popular_cars') }}" class="sidebar-link">
                         <i class="bi bi-fire"></i>
                         <span>熱門車款</span>
+                    </a>
+                </li>
+                <li class="sidebar-item {% if request.endpoint == 'controller.bookings' %}active{% endif %}">
+                    <a href="{{ url_for('controller.bookings') }}" class="sidebar-link">
+                        <i class="bi bi-pencil-square"></i>
+                        <span>訂單管理</span>
                     </a>
                 </li>
                 {% if current_user.is_authenticated and current_user.is_superadmin() %}
