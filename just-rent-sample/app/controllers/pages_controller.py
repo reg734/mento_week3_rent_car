@@ -339,7 +339,50 @@ def profile():
 @bp.route('/account/orders')
 @login_required
 def orders():
-    return render_template('/account/account-orders.html', title='My Orders')
+    # 查詢該使用者的所有訂單，並 join 車輛和地點
+    orders = db.session.query(
+        Booking,
+        Car.name.label('car_name'),
+        Location.name.label('pickup_location'),
+        Location.name.label('dropoff_location')
+    ).join(
+        Car, Booking.car_id == Car.id
+    ).join(
+        Location, Booking.pick_up_location_id == Location.id
+    ).filter(
+        Booking.user_id == current_user.id
+    ).all()
+
+    # 整理資料給 template
+    order_list = []
+    for booking, car_name, pickup_location, dropoff_location in orders:
+        order_list.append({
+            'id': booking.id,
+            'car_name': car_name,
+            'pickup_location': pickup_location,
+            'dropoff_location': dropoff_location,
+            'pick_up_time': booking.pick_up_time,
+            'return_time': booking.return_time,
+            'status': booking.status
+        })
+
+    return render_template('/account/account-orders.html', title='My Orders', orders=order_list)
+
+@bp.route('/account/orders/cancel/<int:order_id>')
+@login_required
+def cancel_order(order_id):
+    booking = Booking.query.filter_by(id=order_id, user_id=current_user.id).first()
+    if not booking:
+        flash('找不到此訂單或無權限取消', 'error')
+        return redirect(url_for('controller.orders'))
+    if booking.status == 'cancelled':
+        flash('訂單已取消', 'warning')
+        return redirect(url_for('controller.orders'))
+    booking.status = 'cancelled'
+    db.session.commit()
+    flash('訂單已成功取消', 'success')
+    return redirect(url_for('controller.orders'))
+
 
 @bp.route('/account/favorite')
 @login_required
