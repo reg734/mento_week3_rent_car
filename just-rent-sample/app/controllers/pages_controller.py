@@ -116,7 +116,8 @@ def booking():
                 overlap = Booking.query.filter(
                     Booking.car_id == car.id,
                     Booking.pick_up_time < return_dt,
-                    Booking.return_time > pickup_dt
+                    Booking.return_time > pickup_dt,
+                    Booking.status != 'cancelled'
                 ).first()
                 if not overlap:
                     available_cars.append(car)
@@ -309,7 +310,7 @@ def booking_confirm():
             drop_off_location_id=dropoff_loc.id,
             pick_up_time=pickup_dt,
             return_time=return_dt,
-            status='confirmed'
+            status='scheduled'
         )
         
         db.session.add(booking)
