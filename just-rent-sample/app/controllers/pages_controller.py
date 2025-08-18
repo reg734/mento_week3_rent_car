@@ -38,40 +38,7 @@ def profile():
 @bp.route('/account/orders')
 @login_required
 def orders():
-    # 建立 Location 表的別名，因為需要 JOIN 兩次
-    pickup_location = Location.__table__.alias('pickup_loc')
-    dropoff_location = Location.__table__.alias('dropoff_loc')
-    
-    # 查詢該使用者的所有訂單，並 join 車輛和兩個地點
-    orders = db.session.query(
-        Booking,
-        Car.name.label('car_name'),
-        pickup_location.c.name.label('pickup_location'),
-        dropoff_location.c.name.label('dropoff_location')
-    ).join(
-        Car, Booking.car_id == Car.id
-    ).join(
-        pickup_location, Booking.pick_up_location_id == pickup_location.c.id
-    ).join(
-        dropoff_location, Booking.drop_off_location_id == dropoff_location.c.id
-    ).filter(
-        Booking.user_id == current_user.id
-    ).all()
-
-    # 整理資料給 template
-    order_list = []
-    for booking, car_name, pickup_location, dropoff_location in orders:
-        order_list.append({
-            'id': booking.id,
-            'car_name': car_name,
-            'pickup_location': pickup_location,
-            'dropoff_location': dropoff_location,
-            'pick_up_time': booking.pick_up_time,
-            'return_time': booking.return_time,
-            'status': booking.status
-        })
-
-    return render_template('/account/account-orders.html', title='My Orders', orders=order_list)
+    return render_template('/account/account-orders.html', title='My Orders')
 
 @bp.route('/account/favorite')
 @login_required

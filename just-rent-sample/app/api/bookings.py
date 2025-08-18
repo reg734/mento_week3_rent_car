@@ -1,11 +1,68 @@
 from flask import jsonify, request
 from flask_login import login_required, current_user
 from app.api import bp
-from app.models import Car, Location, Booking, Price
+from app.models import Car, Location, Booking, Price, User
 from app import db
 from datetime import datetime
 from dateutil import parser
 import math
+from sqlalchemy import text
+
+@bp.route('/api/bookings', methods=['GET'])
+@login_required
+def get_bookings():
+    """取得訂單列表 - 管理員可看所有訂單，一般用戶只能看自己的訂單"""
+    
+    # 建立 Location 表的別名
+    pickup_location = Location.__table__.alias('pickup_loc')
+    dropoff_location = Location.__table__.alias('dropoff_loc')
+    
+    # 基礎查詢
+    query = db.session.query(
+        Booking,
+        Car.name.label('car_name'),
+        User.username.label('user_name'),
+        pickup_location.c.name.label('pickup_location'),
+        dropoff_location.c.name.label('dropoff_location')
+    ).join(
+        Car, Booking.car_id == Car.id
+    ).join(
+        User, Booking.user_id == User.id
+    ).join(
+        pickup_location, Booking.pick_up_location_id == pickup_location.c.id
+    ).join(
+        dropoff_location, Booking.drop_off_location_id == dropoff_location.c.id
+    )
+    
+    # 根據權限過濾資料
+    if not current_user.is_admin():
+        # 一般用戶只能看自己的訂單
+        query = query.filter(Booking.user_id == current_user.id)
+    
+    # 執行查詢
+    results = query.order_by(Booking.pick_up_time.desc()).all()
+    
+    # 整理資料
+    bookings_list = []
+    for booking, car_name, user_name, pickup_location, dropoff_location in results:
+        bookings_list.append({
+            'id': booking.id,
+            'user_id': booking.user_id,
+            'user_name': user_name,
+            'car_id': booking.car_id,
+            'car_name': car_name,
+            'pickup_location': pickup_location,
+            'dropoff_location': dropoff_location,
+            'pick_up_time': booking.pick_up_time.isoformat() if booking.pick_up_time else None,
+            'return_time': booking.return_time.isoformat() if booking.return_time else None,
+            'status': booking.status
+        })
+    
+    return jsonify({
+        'success': True,
+        'bookings': bookings_list,
+        'is_admin': current_user.is_admin()
+    })
 
 @bp.route('/api/bookings/available-cars', methods=['GET'])
 def get_available_cars():
@@ -243,11 +300,21 @@ def create_booking():
 @bp.route('/api/bookings/cancel/<int:order_id>', methods=['POST'])
 @login_required
 def api_cancel_order(order_id):
-    booking = Booking.query.filter_by(id=order_id, user_id=current_user.id).first()
-    if not booking:
-        return jsonify({'success': False, 'message': '找不到此訂單或無權限取消'})
+    # 檢查是否為管理員
+    if current_user.is_admin():
+        # 管理員可以取消任何訂單
+        booking = Booking.query.get(order_id)
+        if not booking:
+            return jsonify({'success': False, 'message': '找不到此訂單'})
+    else:
+        # 一般用戶只能取消自己的訂單
+        booking = Booking.query.filter_by(id=order_id, user_id=current_user.id).first()
+        if not booking:
+            return jsonify({'success': False, 'message': '找不到此訂單或無權限取消'})
+
     if booking.status == 'cancelled':
         return jsonify({'success': False, 'message': '訂單已取消'})
+
     booking.status = 'cancelled'
     db.session.commit()
     return jsonify({'success': True, 'message': '訂單已成功取消'})

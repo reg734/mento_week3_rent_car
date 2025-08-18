@@ -43,31 +43,11 @@
                   <th scope="col"><span class="text-uppercase fs-12 text-gray">Cancelled</span></th>
                 </tr>
               </thead>
-              <tbody>
-                {% for order in orders %}
-                {% if order.status == 'scheduled' %}
+              <tbody id="scheduled-orders-body">
+                <!-- 將由 AJAX 動態載入 -->
                 <tr>
-                  <td><span class="d-lg-none d-sm-block">Order ID</span>
-                    <div class="badge bg-gray-100 text-dark">#{{ order.id }}</div>
-                  </td>
-                  <td><span class="d-lg-none d-sm-block">Car Name</span><span class="bold">{{ order.car_name }}</span>
-                  </td>
-                  <td><span class="d-lg-none d-sm-block">Pick Up Location</span>{{ order.pickup_location }}</td>
-                  <td><span class="d-lg-none d-sm-block">Drop Off Location</span>{{ order.dropoff_location }}</td>
-                  <td><span class="d-lg-none d-sm-block">Pick Up Date</span>{{ order.pick_up_time }}</td>
-                  <td><span class="d-lg-none d-sm-block">Return Date</span>{{ order.return_time }}</td>
-                  <td>
-                    <div class="badge rounded-pill bg-warning">{{ order.status }}</div>
-                  </td>
-                  <td>
-                    <div style="display: flex; justify-content: center; align-items: center;">
-                      <button class="btn btn-danger btn-xs btn-cancel-order" data-order-id="{{ order.id }}"
-                        style="padding: 2px 8px; font-size: 0.8rem;">X</button>
-                    </div>
-                  </td>
+                  <td colspan="8" class="text-center">載入中...</td>
                 </tr>
-                {% endif %}
-                {% endfor %}
               </tbody>
             </table>
           </div>
@@ -87,25 +67,11 @@
                   <th scope="col"><span class="text-uppercase fs-12 text-gray">Status</span></th>
                 </tr>
               </thead>
-              <tbody>
-                {% for order in orders %}
-                {% if order.status == 'completed' %}
+              <tbody id="completed-orders-body">
+                <!-- 將由 AJAX 動態載入 -->
                 <tr>
-                  <td><span class="d-lg-none d-sm-block">Order ID</span>
-                    <div class="badge bg-gray-100 text-dark">#{{ order.id }}</div>
-                  </td>
-                  <td><span class="d-lg-none d-sm-block">Car Name</span><span class="bold">{{ order.car_name }}</span>
-                  </td>
-                  <td><span class="d-lg-none d-sm-block">Pick Up Location</span>{{ order.pickup_location }}</td>
-                  <td><span class="d-lg-none d-sm-block">Drop Off Location</span>{{ order.dropoff_location }}</td>
-                  <td><span class="d-lg-none d-sm-block">Pick Up Date</span>{{ order.pick_up_time }}</td>
-                  <td><span class="d-lg-none d-sm-block">Return Date</span>{{ order.return_time }}</td>
-                  <td>
-                    <div class="badge rounded-pill bg-success">{{ order.status }}</div>
-                  </td>
+                  <td colspan="7" class="text-center">載入中...</td>
                 </tr>
-                {% endif %}
-                {% endfor %}
               </tbody>
             </table>
           </div>
@@ -125,25 +91,11 @@
                   <th scope="col"><span class="text-uppercase fs-12 text-gray">Status</span></th>
                 </tr>
               </thead>
-              <tbody>
-                {% for order in orders %}
-                {% if order.status == 'cancelled' %}
+              <tbody id="cancelled-orders-body">
+                <!-- 將由 AJAX 動態載入 -->
                 <tr>
-                  <td><span class="d-lg-none d-sm-block">Order ID</span>
-                    <div class="badge bg-gray-100 text-dark">#{{ order.id }}</div>
-                  </td>
-                  <td><span class="d-lg-none d-sm-block">Car Name</span><span class="bold">{{ order.car_name }}</span>
-                  </td>
-                  <td><span class="d-lg-none d-sm-block">Pick Up Location</span>{{ order.pickup_location }}</td>
-                  <td><span class="d-lg-none d-sm-block">Drop Off Location</span>{{ order.dropoff_location }}</td>
-                  <td><span class="d-lg-none d-sm-block">Pick Up Date</span>{{ order.pick_up_time }}</td>
-                  <td><span class="d-lg-none d-sm-block">Return Date</span>{{ order.return_time }}</td>
-                  <td>
-                    <div class="badge rounded-pill bg-danger">{{ order.status }}</div>
-                  </td>
+                  <td colspan="7" class="text-center">載入中...</td>
                 </tr>
-                {% endif %}
-                {% endfor %}
               </tbody>
             </table>
           </div>

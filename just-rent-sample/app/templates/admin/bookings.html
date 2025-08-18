@@ -31,26 +31,11 @@
                                         <th>取消</th>
                                     </tr>
                                 </thead>
-                                <tbody>
-                                    {% for booking in bookings %}
-                                    {% if booking.status == 'scheduled' %}
+                                <tbody id="admin-scheduled-body">
+                                    <!-- 將由 AJAX 動態載入 -->
                                     <tr>
-                                        <td>{{booking.id}}</td>
-                                        <td>{{booking.user_name}} (id:{{booking.user_id}})</td>
-                                        <td>{{booking.car_name}} (id:{{booking.car_id}})</td>
-                                        <td>{{booking.pickup_location}}</td>
-                                        <td>{{booking.dropoff_location}}</td>
-                                        <td>{{ booking.pick_up_time.strftime('%Y-%m-%d %H:%M') if booking.pick_up_time else '' }}</td>
-                                        <td>{{ booking.return_time.strftime('%Y-%m-%d %H:%M') if booking.return_time else '' }}</td>
-                                        <td>{{booking.status}}</td>
-                                        <td>
-                                            <form action="{{ url_for('controller.cancel_booking', booking_id=booking.id) }}" method="POST" onsubmit="return confirm('確定要取消此訂單嗎？');">
-                                                <button type="submit" class="btn btn-danger">取消</button>
-                                            </form>
-                                        </td>
+                                        <td colspan="9" class="text-center">載入中...</td>
                                     </tr>
-                                    {% endif %}
-                                    {% endfor %}
                                 </tbody>
                             </table>
                         </div>
@@ -85,21 +70,11 @@
                                         <th>狀態</th>
                                     </tr>
                                 </thead>
-                                <tbody>
-                                    {% for booking in bookings %}
-                                    {% if booking.status == 'completed' %}
+                                <tbody id="admin-completed-body">
+                                    <!-- 將由 AJAX 動態載入 -->
                                     <tr>
-                                        <td>{{booking.id}}</td>
-                                        <td>{{booking.user_name}} (id:{{booking.user_id}})</td>
-                                        <td>{{booking.car_name}} (id:{{booking.car_id}})</td>
-                                        <td>{{booking.pickup_location}}</td>
-                                        <td>{{booking.dropoff_location}}</td>
-                                        <td>{{booking.pickup_time}}</td>
-                                        <td>{{booking.dropoff_time}}</td>
-                                        <td>{{booking.status}}</td>
+                                        <td colspan="8" class="text-center">載入中...</td>
                                     </tr>
-                                    {% endif %}
-                                    {% endfor %}
                                 </tbody>
                             </table>
                         </div>
@@ -134,21 +109,11 @@
                                         <th>狀態</th>
                                     </tr>
                                 </thead>
-                                <tbody>
-                                    {% for booking in bookings %}
-                                    {% if booking.status == 'cancelled' %}
+                                <tbody id="admin-cancelled-body">
+                                    <!-- 將由 AJAX 動態載入 -->
                                     <tr>
-                                        <td>{{booking.id}}</td>
-                                        <td>{{booking.user_name}} (id:{{booking.user_id}})</td>
-                                        <td>{{booking.car_name}} (id:{{booking.car_id}})</td>
-                                        <td>{{booking.pickup_location}}</td>
-                                        <td>{{booking.dropoff_location}}</td>
-                                        <td>{{ booking.pick_up_time.strftime('%Y-%m-%d %H:%M') if booking.pick_up_time else '' }}</td>
-                                        <td>{{ booking.return_time.strftime('%Y-%m-%d %H:%M') if booking.return_time else '' }}</td>
-                                        <td>{{booking.status}}</td>
+                                        <td colspan="8" class="text-center">載入中...</td>
                                     </tr>
-                                    {% endif %}
-                                    {% endfor %}
                                 </tbody>
                             </table>
                         </div>
@@ -169,3 +134,7 @@
     </footer>
 </div>
 {% endblock%}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/booking.js') }}"></script>
+{% endblock %}

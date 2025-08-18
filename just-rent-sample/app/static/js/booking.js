@@ -1,18 +1,71 @@
 (function () {
     'use strict';
 
+    // ===== Booking API 模組 - 集中管理所有訂單相關的 API 呼叫 =====
+    const BookingAPI = {
+        // 查詢可用車輛
+        searchAvailable: function(params) {
+            return fetch(`/api/bookings/available-cars?${params}`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                });
+        },
+        
+        // 取得訂單列表
+        getAll: function() {
+            return fetch('/api/bookings', {
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json' }
+            }).then(response => response.json());
+        },
+        
+        // 建立新訂單
+        create: function(orderData) {
+            return fetch('/api/bookings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(orderData)
+            }).then(response => {
+                if (response.status === 401) {
+                    // 未登入，導向登入頁
+                    alert('請先登入後再進行預訂');
+                    window.location.href = '/login?next=/booking';
+                    return null;
+                }
+                return response.json();
+            });
+        },
+        
+        // 取消訂單
+        cancel: function(orderId) {
+            return fetch(`/api/bookings/cancel/${orderId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            }).then(response => response.json());
+        }
+    };
+
+    // 將 BookingAPI 掛載到 window 以供其他地方使用
+    window.BookingAPI = BookingAPI;
+
     // ===== 初始化 =====
-    document.addEventListener('DOMContentLoaded',
-        function () {
-            initBookingForm();
-        });
+    document.addEventListener('DOMContentLoaded', function () {
+        initBookingForm();
+        initCancelButtons();
+        // 如果在訂單列表頁面，載入訂單
+        if (window.location.pathname.includes('/orders') || window.location.pathname.includes('/bookings')) {
+            loadOrders();
+        }
+    });
 
     /**
      * 初始化預訂表單
      */
     function initBookingForm() {
-        const form =
-            document.getElementById('contact_form');
+        const form = document.getElementById('contact_form');
         if (form) {
             form.addEventListener('submit', function (e) {
                 e.preventDefault();
@@ -119,14 +172,8 @@
         // 顯示載入中
         showLoading();
 
-        // 呼叫 API
-        fetch(`/api/bookings/available-cars?${params}`)
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Network response was not ok');
-                  }
-                return response.json();
-            })
+        // 使用 BookingAPI 模組呼叫 API
+        BookingAPI.searchAvailable(params)
             .then(data => {
                 hideLoading();
                 handleApiResponse(data);
@@ -134,8 +181,7 @@
             .catch(error => {
                 hideLoading();
                 console.error('Error:', error);
-                showAlert('發生錯誤，請稍後再試',
-                    'danger');
+                showAlert('發生錯誤，請稍後再試', 'danger');
             });
     }
 
@@ -471,40 +517,21 @@
           // 顯示處理中
           showProcessing();
 
-          // 發送訂單請求
-          fetch('/api/bookings', {
-              method: 'POST',
-              headers: {
-                  'Content-Type': 'application/json',
-              },
-              body: JSON.stringify(orderData)
-          })
-          .then(response => {
-              if (response.status === 401) {
-                  // 未登入，導向登入頁
-                  alert('請先登入後再進行預訂');
-                  window.location.href =
-  '/login?next=/booking';
-                  return null;
-              }
-              return response.json();
-          })
+          // 使用 BookingAPI 模組發送訂單請求
+          BookingAPI.create(orderData)
           .then(data => {
               hideProcessing();
 
               if (data && data.status === 'success') {
                   // 顯示成功訊息
-                  showSuccessMessage(data.message ||
-  '訂單建立成功！');
+                  showSuccessMessage(data.message || '訂單建立成功！');
 
                   // 2秒後導向訂單頁面
                   setTimeout(() => {
-                      window.location.href =
-  '/account/orders';
+                      window.location.href = '/account/orders';
                   }, 2000);
               } else if (data) {
-                  showAlert(data.message ||
-  '訂單建立失敗', 'danger');
+                  showAlert(data.message || '訂單建立失敗', 'danger');
               }
           })
           .catch(error => {
@@ -567,33 +594,220 @@
         `;
         document.body.appendChild(successDiv);
     }
-// ===== 訂單取消相關 =====
-document.addEventListener('DOMContentLoaded', function () {
-    // 假設取消按鈕 class 為 .btn-cancel-order
-    document.querySelectorAll('.btn-cancel-order').forEach(function (btn) {
-        btn.addEventListener('click', function (e) {
-            e.preventDefault();
-            const orderId = btn.getAttribute('data-order-id');
-            if (!orderId) return;
-            if (!confirm('確定要取消此訂單嗎？')) return;
 
-            fetch(`/api/bookings/cancel/${orderId}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' }
-            })
-            .then(res => res.json())
+    // ===== 訂單管理相關 =====
+    
+    /**
+     * 載入訂單列表
+     */
+    function loadOrders() {
+        console.log('Loading orders...');
+        BookingAPI.getAll()
             .then(data => {
-                if (data.success === true) {
-                    showSuccessMessage(data.message || '訂單已取消');
-                    setTimeout(() => window.location.reload(), 1500);
-                } else {
-                    showAlert(data.message || '取消失敗', 'danger');
+                if (data.success) {
+                    console.log('Orders loaded:', data.bookings);
+                    // 根據頁面類型渲染訂單
+                    if (window.location.pathname.includes('/account/orders')) {
+                        renderUserOrders(data.bookings);
+                    } else if (window.location.pathname.includes('/admin/bookings')) {
+                        renderAdminOrders(data.bookings, data.is_admin);
+                    }
                 }
             })
-            .catch(() => showAlert('發生錯誤，請稍後再試', 'danger'));
+            .catch(error => {
+                console.error('Error loading orders:', error);
+                showAlert('無法載入訂單資料', 'danger');
+            });
+    }
+    
+    /**
+     * 渲染用戶訂單頁面
+     */
+    function renderUserOrders(bookings) {
+        // 分類訂單
+        const scheduled = bookings.filter(b => b.status === 'scheduled');
+        const completed = bookings.filter(b => b.status === 'completed');
+        const cancelled = bookings.filter(b => b.status === 'cancelled');
+        
+        // 渲染預定訂單
+        const scheduledBody = document.querySelector('#scheduled-orders-body');
+        if (scheduledBody) {
+            scheduledBody.innerHTML = scheduled.map(order => `
+                <tr>
+                    <td><span class="d-lg-none d-sm-block">Order ID</span>
+                        <div class="badge bg-gray-100 text-dark">#${order.id}</div>
+                    </td>
+                    <td><span class="d-lg-none d-sm-block">Car Name</span><span class="bold">${order.car_name}</span></td>
+                    <td><span class="d-lg-none d-sm-block">Pick Up Location</span>${order.pickup_location}</td>
+                    <td><span class="d-lg-none d-sm-block">Drop Off Location</span>${order.dropoff_location}</td>
+                    <td><span class="d-lg-none d-sm-block">Pick Up Date</span>${formatDateTime(order.pick_up_time)}</td>
+                    <td><span class="d-lg-none d-sm-block">Return Date</span>${formatDateTime(order.return_time)}</td>
+                    <td>
+                        <div class="badge rounded-pill bg-warning">${order.status}</div>
+                    </td>
+                    <td>
+                        <div style="display: flex; justify-content: center; align-items: center;">
+                            <button class="btn btn-danger btn-xs btn-cancel-order" data-order-id="${order.id}"
+                                style="padding: 2px 8px; font-size: 0.8rem;">X</button>
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+        }
+        
+        // 渲染完成訂單
+        const completedBody = document.querySelector('#completed-orders-body');
+        if (completedBody) {
+            completedBody.innerHTML = completed.map(order => `
+                <tr>
+                    <td><span class="d-lg-none d-sm-block">Order ID</span>
+                        <div class="badge bg-gray-100 text-dark">#${order.id}</div>
+                    </td>
+                    <td><span class="d-lg-none d-sm-block">Car Name</span><span class="bold">${order.car_name}</span></td>
+                    <td><span class="d-lg-none d-sm-block">Pick Up Location</span>${order.pickup_location}</td>
+                    <td><span class="d-lg-none d-sm-block">Drop Off Location</span>${order.dropoff_location}</td>
+                    <td><span class="d-lg-none d-sm-block">Pick Up Date</span>${formatDateTime(order.pick_up_time)}</td>
+                    <td><span class="d-lg-none d-sm-block">Return Date</span>${formatDateTime(order.return_time)}</td>
+                    <td>
+                        <div class="badge rounded-pill bg-success">${order.status}</div>
+                    </td>
+                </tr>
+            `).join('');
+        }
+        
+        // 渲染取消訂單
+        const cancelledBody = document.querySelector('#cancelled-orders-body');
+        if (cancelledBody) {
+            cancelledBody.innerHTML = cancelled.map(order => `
+                <tr>
+                    <td><span class="d-lg-none d-sm-block">Order ID</span>
+                        <div class="badge bg-gray-100 text-dark">#${order.id}</div>
+                    </td>
+                    <td><span class="d-lg-none d-sm-block">Car Name</span><span class="bold">${order.car_name}</span></td>
+                    <td><span class="d-lg-none d-sm-block">Pick Up Location</span>${order.pickup_location}</td>
+                    <td><span class="d-lg-none d-sm-block">Drop Off Location</span>${order.dropoff_location}</td>
+                    <td><span class="d-lg-none d-sm-block">Pick Up Date</span>${formatDateTime(order.pick_up_time)}</td>
+                    <td><span class="d-lg-none d-sm-block">Return Date</span>${formatDateTime(order.return_time)}</td>
+                    <td>
+                        <div class="badge rounded-pill bg-danger">${order.status}</div>
+                    </td>
+                </tr>
+            `).join('');
+        }
+        
+        // 重新綁定取消按鈕
+        initCancelButtons();
+    }
+    
+    /**
+     * 渲染管理員訂單頁面
+     */
+    function renderAdminOrders(bookings, isAdmin) {
+        // 分類訂單
+        const scheduled = bookings.filter(b => b.status === 'scheduled');
+        const completed = bookings.filter(b => b.status === 'completed');
+        const cancelled = bookings.filter(b => b.status === 'cancelled');
+        
+        // 渲染預定訂單
+        const scheduledBody = document.querySelector('#admin-scheduled-body');
+        if (scheduledBody) {
+            scheduledBody.innerHTML = scheduled.map(booking => `
+                <tr>
+                    <td>${booking.id}</td>
+                    <td>${booking.user_name} (id:${booking.user_id})</td>
+                    <td>${booking.car_name} (id:${booking.car_id})</td>
+                    <td>${booking.pickup_location}</td>
+                    <td>${booking.dropoff_location}</td>
+                    <td>${formatDateTime(booking.pick_up_time)}</td>
+                    <td>${formatDateTime(booking.return_time)}</td>
+                    <td>${booking.status}</td>
+                    <td>
+                        <button type="button" class="btn btn-danger btn-cancel-order"
+                            data-order-id="${booking.id}">
+                            取消
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+        
+        // 渲染完成訂單
+        const completedBody = document.querySelector('#admin-completed-body');
+        if (completedBody) {
+            completedBody.innerHTML = completed.map(booking => `
+                <tr>
+                    <td>${booking.id}</td>
+                    <td>${booking.user_name} (id:${booking.user_id})</td>
+                    <td>${booking.car_name} (id:${booking.car_id})</td>
+                    <td>${booking.pickup_location}</td>
+                    <td>${booking.dropoff_location}</td>
+                    <td>${formatDateTime(booking.pick_up_time)}</td>
+                    <td>${formatDateTime(booking.return_time)}</td>
+                    <td>${booking.status}</td>
+                </tr>
+            `).join('');
+        }
+        
+        // 渲染取消訂單
+        const cancelledBody = document.querySelector('#admin-cancelled-body');
+        if (cancelledBody) {
+            cancelledBody.innerHTML = cancelled.map(booking => `
+                <tr>
+                    <td>${booking.id}</td>
+                    <td>${booking.user_name} (id:${booking.user_id})</td>
+                    <td>${booking.car_name} (id:${booking.car_id})</td>
+                    <td>${booking.pickup_location}</td>
+                    <td>${booking.dropoff_location}</td>
+                    <td>${formatDateTime(booking.pick_up_time)}</td>
+                    <td>${formatDateTime(booking.return_time)}</td>
+                    <td>${booking.status}</td>
+                </tr>
+            `).join('');
+        }
+        
+        // 重新綁定取消按鈕
+        initCancelButtons();
+    }
+    
+    /**
+     * 格式化日期時間
+     */
+    function formatDateTime(isoString) {
+        if (!isoString) return '';
+        const date = new Date(isoString);
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const hours = String(date.getHours()).padStart(2, '0');
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        return `${year}-${month}-${day} ${hours}:${minutes}`;
+    }
+    
+    /**
+     * 初始化取消按鈕
+     */
+    function initCancelButtons() {
+        // 綁定所有取消按鈕
+        document.querySelectorAll('.btn-cancel-order').forEach(function (btn) {
+            btn.addEventListener('click', function (e) {
+                e.preventDefault();
+                const orderId = btn.getAttribute('data-order-id');
+                if (!orderId) return;
+                if (!confirm('確定要取消此訂單嗎？')) return;
+
+                // 使用 BookingAPI 模組取消訂單
+                BookingAPI.cancel(orderId)
+                    .then(data => {
+                        if (data.success === true) {
+                            showSuccessMessage(data.message || '訂單已取消');
+                            setTimeout(() => window.location.reload(), 1500);
+                        } else {
+                            showAlert(data.message || '取消失敗', 'danger');
+                        }
+                    })
+                    .catch(() => showAlert('發生錯誤，請稍後再試', 'danger'));
+            });
         });
-    });
-});
+    }
 
-
-  })();
+})();

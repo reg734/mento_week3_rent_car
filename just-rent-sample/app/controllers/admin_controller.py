@@ -236,34 +236,4 @@ def popular_cars():
 @bp.route('/admin/bookings')
 @role_required(['admin', 'superadmin'])
 def bookings():
-    sql = text("""
-        SELECT b.*, 
-            u.username AS user_name,
-            pl.name AS pickup_location, 
-            dl.name AS dropoff_location,
-            c.name AS car_name
-        FROM bookings b
-        LEFT JOIN users u ON b.user_id = u.id
-        LEFT JOIN locations pl ON b.pick_up_location_id = pl.id
-        LEFT JOIN locations dl ON b.drop_off_location_id = dl.id
-        LEFT JOIN cars c ON b.car_id = c.id
-    """)
-    result = db.session.execute(sql)
-    bookings = [row for row in result]
-    return render_template('admin/bookings.html', bookings=bookings)
-
-
-@bp.route('/admin/bookings/cancel/<int:booking_id>', methods=['POST'])
-@role_required(['admin', 'superadmin'])
-def cancel_booking(booking_id):
-    booking = Booking.query.get(booking_id)
-    if not booking:
-        flash('找不到此訂單', 'error')
-        return redirect(url_for('controller.bookings'))
-    if booking.status == 'cancelled':
-        flash('此訂單已取消', 'warning')
-        return redirect(url_for('controller.bookings'))
-    booking.status = 'cancelled'
-    db.session.commit()
-    flash(f'訂單 #{booking.id} 已成功取消', 'success')
-    return redirect(url_for('controller.bookings'))
+    return render_template('admin/bookings.html')
