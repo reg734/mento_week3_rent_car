@@ -61,8 +61,8 @@
                   </td>
                   <td>
                     <div style="display: flex; justify-content: center; align-items: center;">
-                      <a href="{{ url_for('controller.cancel_order', order_id=order.id) }}"
-                        class="btn btn-danger btn-xs " style="padding: 2px 8px; font-size: 0.8rem;" onclick="return confirm('確定要取消此訂單嗎？');">X</a>
+                      <button class="btn btn-danger btn-xs btn-cancel-order" data-order-id="{{ order.id }}"
+                        style="padding: 2px 8px; font-size: 0.8rem;">X</button>
                     </div>
                   </td>
                 </tr>
@@ -155,4 +155,8 @@
 
 </div>
 <!-- content close -->
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/booking.js') }}"></script>
 {% endblock %}

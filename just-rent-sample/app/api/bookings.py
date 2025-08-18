@@ -238,3 +238,16 @@ def create_booking():
             'status': 'error',
             'message': f'訂單建立失敗：{str(e)}'
         }), 500
+    
+
+@bp.route('/api/bookings/cancel/<int:order_id>', methods=['POST'])
+@login_required
+def api_cancel_order(order_id):
+    booking = Booking.query.filter_by(id=order_id, user_id=current_user.id).first()
+    if not booking:
+        return jsonify({'success': False, 'message': '找不到此訂單或無權限取消'})
+    if booking.status == 'cancelled':
+        return jsonify({'success': False, 'message': '訂單已取消'})
+    booking.status = 'cancelled'
+    db.session.commit()
+    return jsonify({'success': True, 'message': '訂單已成功取消'})

@@ -73,22 +73,6 @@ def orders():
 
     return render_template('/account/account-orders.html', title='My Orders', orders=order_list)
 
-@bp.route('/account/orders/cancel/<int:order_id>')
-@login_required
-def cancel_order(order_id):
-    booking = Booking.query.filter_by(id=order_id, user_id=current_user.id).first()
-    if not booking:
-        flash('找不到此訂單或無權限取消', 'error')
-        return redirect(url_for('controller.orders'))
-    if booking.status == 'cancelled':
-        flash('訂單已取消', 'warning')
-        return redirect(url_for('controller.orders'))
-    booking.status = 'cancelled'
-    db.session.commit()
-    flash('訂單已成功取消', 'success')
-    return redirect(url_for('controller.orders'))
-
-
 @bp.route('/account/favorite')
 @login_required
 def favorite():

@@ -567,5 +567,33 @@
         `;
         document.body.appendChild(successDiv);
     }
+// ===== 訂單取消相關 =====
+document.addEventListener('DOMContentLoaded', function () {
+    // 假設取消按鈕 class 為 .btn-cancel-order
+    document.querySelectorAll('.btn-cancel-order').forEach(function (btn) {
+        btn.addEventListener('click', function (e) {
+            e.preventDefault();
+            const orderId = btn.getAttribute('data-order-id');
+            if (!orderId) return;
+            if (!confirm('確定要取消此訂單嗎？')) return;
+
+            fetch(`/api/bookings/cancel/${orderId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success === true) {
+                    showSuccessMessage(data.message || '訂單已取消');
+                    setTimeout(() => window.location.reload(), 1500);
+                } else {
+                    showAlert(data.message || '取消失敗', 'danger');
+                }
+            })
+            .catch(() => showAlert('發生錯誤，請稍後再試', 'danger'));
+        });
+    });
+});
+
 
   })();
