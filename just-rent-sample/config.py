@@ -19,3 +19,4 @@ class Config:
     TAPPAY_APP_KEY = os.environ.get('TAPPAY_APP_KEY')
     TAPPAY_SANDBOX = os.environ.get('TAPPAY_SANDBOX', 'true').lower() == 'true'
     TAPPAY_MERCHANT_ID = os.environ.get('TAPPAY_MERCHANT_ID', '')
+    TAPPAY_PARTNER_KEY = os.environ.get('TAPPAY_PARTNER_KEY', '')
