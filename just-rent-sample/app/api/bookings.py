@@ -490,30 +490,29 @@ def create_reservation():
                 'message': f'找不到有效地點：{pickup_location} 或 {dropoff_location}'
             }), 400
         
-        # 檢查車輛是否存在且可用
-        car = Car.query.get(car_id)
-        if not car:
-            return jsonify({
-                'status': 'error',
-                'message': '找不到指定車輛'
-            }), 400
-        
-        # 檢查時間衝突
-        overlap = Booking.query.filter(
-            Booking.car_id == car_id,
-            Booking.pick_up_time < return_dt,
-            Booking.return_time > pickup_dt,
-            Booking.booking_status.in_(['pending', 'confirmed'])
-        ).first()
-        
-        if overlap:
-            return jsonify({
-                'status': 'error',
-                'message': '選擇的時段車輛已被預訂'
-            }), 400
-        
         # 開始資料庫交易
         try:
+            # 檢查車輛是否存在且可用 - 使用行級鎖防止併發預訂
+            car = Car.query.with_for_update().filter_by(id=car_id).first()
+            if not car:
+                return jsonify({
+                    'status': 'error',
+                    'message': '找不到指定車輛'
+                }), 400
+            
+            # 檢查時間衝突 - 在鎖定車輛後進行檢查確保原子性
+            overlap = Booking.query.filter(
+                Booking.car_id == car_id,
+                Booking.pick_up_time < return_dt,
+                Booking.return_time > pickup_dt,
+                Booking.booking_status.in_(['pending', 'confirmed'])
+            ).first()
+            
+            if overlap:
+                return jsonify({
+                    'status': 'error',
+                    'message': '選擇的時段車輛已被預訂'
+                }), 400
             # 設定台灣時區 (UTC+8)
             taiwan_timezone = timezone(timedelta(hours=8))
             taiwan_now = datetime.now(taiwan_timezone)
