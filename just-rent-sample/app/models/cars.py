@@ -22,7 +22,8 @@ class Car(db.Model):
     exterior_color = db.Column(db.String(50), nullable=False, default='Unknown')
     interior_color = db.Column(db.String(50), nullable=False, default='Unknown')
     car_level = db.Column(db.Integer, nullable=False, default=1)
-    
+    rental_status = db.Column(db.String(20), nullable=False, default='available')
+
     created_at = db.Column(db.DateTime, nullable=False,
                             default=datetime.utcnow,
                             server_default=db.func.current_timestamp())

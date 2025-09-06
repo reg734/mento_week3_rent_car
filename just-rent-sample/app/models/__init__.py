@@ -12,4 +12,5 @@ from app.models.my_favorites import MyFavorite
 from app.models.bookings import Booking
 from app.models.prices import Price
 from app.models.locations import Location
+from app.models.orders import Order
 
