@@ -40,13 +40,14 @@
                   <th scope="col"><span class="text-uppercase fs-12 text-gray">Pick Up Date</span></th>
                   <th scope="col"><span class="text-uppercase fs-12 text-gray">Return Date</span></th>
                   <th scope="col"><span class="text-uppercase fs-12 text-gray">Status</span></th>
-                  <th scope="col"><span class="text-uppercase fs-12 text-gray">Cancelled</span></th>
+                  <th scope="col"><span class="text-uppercase fs-12 text-gray">Payment</span></th>
+                  <th scope="col"><span class="text-uppercase fs-12 text-gray">Action</span></th>
                 </tr>
               </thead>
               <tbody id="scheduled-orders-body">
                 <!-- 將由 AJAX 動態載入 -->
                 <tr>
-                  <td colspan="8" class="text-center">載入中...</td>
+                  <td colspan="9" class="text-center">載入中...</td>
                 </tr>
               </tbody>
             </table>
@@ -65,12 +66,13 @@
                   <th scope="col"><span class="text-uppercase fs-12 text-gray">Pick Up Date</span></th>
                   <th scope="col"><span class="text-uppercase fs-12 text-gray">Return Date</span></th>
                   <th scope="col"><span class="text-uppercase fs-12 text-gray">Status</span></th>
+                  <th scope="col"><span class="text-uppercase fs-12 text-gray">Payment</span></th>
                 </tr>
               </thead>
               <tbody id="completed-orders-body">
                 <!-- 將由 AJAX 動態載入 -->
                 <tr>
-                  <td colspan="7" class="text-center">載入中...</td>
+                  <td colspan="8" class="text-center">載入中...</td>
                 </tr>
               </tbody>
             </table>
@@ -89,12 +91,13 @@
                   <th scope="col"><span class="text-uppercase fs-12 text-gray">Pick Up Date</span></th>
                   <th scope="col"><span class="text-uppercase fs-12 text-gray">Return Date</span></th>
                   <th scope="col"><span class="text-uppercase fs-12 text-gray">Status</span></th>
+                  <th scope="col"><span class="text-uppercase fs-12 text-gray">Payment</span></th>
                 </tr>
               </thead>
               <tbody id="cancelled-orders-body">
                 <!-- 將由 AJAX 動態載入 -->
                 <tr>
-                  <td colspan="7" class="text-center">載入中...</td>
+                  <td colspan="8" class="text-center">載入中...</td>
                 </tr>
               </tbody>
             </table>
@@ -111,4 +114,372 @@
 
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/booking.js') }}"></script>
+
+<!-- 付款 Modal (TapPay) - 需要的話用於補付款 -->
+<div class="modal fade" id="paymentModal" tabindex="-1" aria-labelledby="paymentModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="paymentModalLabel">確認付款</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <!-- 訂單摘要 -->
+                <div class="card mb-3">
+                    <div class="card-header bg-light">
+                        <h6 class="mb-0">訂單摘要</h6>
+                    </div>
+                    <div class="card-body" id="order-summary">
+                        <!-- 動態填入訂單資訊 -->
+                    </div>
+                </div>
+
+                <!-- 信用卡表單 -->
+                <div class="card">
+                    <div class="card-header bg-light">
+                        <h6 class="mb-0">信用卡資訊</h6>
+                    </div>
+                    <div class="card-body">
+                        <!-- TapPay 信用卡輸入欄位 -->
+                        <div class="mb-3">
+                            <label class="form-label">卡號</label>
+                            <div class="tpfield" id="card-number"></div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">有效期限</label>
+                                <div class="tpfield" id="card-expiration-date"></div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">安全碼 (CVV)</label>
+                                <div class="tpfield" id="card-ccv"></div>
+                            </div>
+                        </div>
+
+                        <!-- 持卡人資訊 (選擇性) -->
+                        <div class="mb-3">
+                            <label for="cardholder-name" class="form-label">持卡人姓名</label>
+                            <input type="text" class="form-control" id="cardholder-name" placeholder="請輸入持卡人姓名">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 付款狀態提示 -->
+                <div id="payment-status" class="mt-3" style="display: none;">
+                    <!-- 動態顯示付款處理狀態 -->
+                </div>
+
+                <!-- 測試卡號提示 (僅 Sandbox) -->
+                <div class="alert alert-info mt-3">
+                    <i class="fa fa-info-circle"></i> <strong>測試模式</strong><br>
+                    測試卡號：4242 4242 4242 4242<br>
+                    有效期限：任何未來日期<br>
+                    CVV：123
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">關閉</button>
+                <button type="button" class="btn btn-primary" id="submit-payment" onclick="onSubmitPayment()">
+                    <i class="fa fa-lock me-1"></i>確認付款
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- TapPay SDK (Sandbox 版本) -->
+<script src="https://js.tappaysdk.com/sdk/tpdirect/v5.14.0"></script>
+
+<!-- TapPay 初始化設置 (簡化版，重用 booking.js 中的函數) -->
+<script>
+    /* TapPay 相關樣式 */
+    const style = document.createElement('style');
+    style.textContent = `
+        .tpfield {
+            height: 45px;
+            width: 100%;
+            padding: 10px 15px;
+            border: 1px solid #ced4da;
+            border-radius: 0.375rem;
+            background-color: #fff;
+            transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+        }
+        .tpfield:hover {
+            border-color: #86b7fe;
+        }
+        .tpfield:focus-within {
+            border-color: #0d6efd;
+            outline: 0;
+            box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+        }
+        #payment-status .alert {
+            display: flex;
+            align-items: center;
+        }
+        #payment-status .spinner-border {
+            margin-right: 10px;
+        }
+    `;
+    document.head.appendChild(style);
+
+    // 設置信用卡表單（Orders 頁面專用）
+    function setupCreditCardFormForOrders() {
+        console.log('開始初始化 Orders 頁面的信用卡表單...');
+        
+        // 檢查必要元素是否存在
+        const cardNumber = document.getElementById('card-number');
+        const cardExpiration = document.getElementById('card-expiration-date');
+        const cardCcv = document.getElementById('card-ccv');
+        
+        if (!cardNumber || !cardExpiration || !cardCcv) {
+            console.error('信用卡表單元素未找到:', { cardNumber, cardExpiration, cardCcv });
+            return;
+        }
+        
+        try {
+            // 設定外觀
+            TPDirect.card.setup({
+                fields: {
+                    number: {
+                        element: '#card-number',
+                        placeholder: '**** **** **** ****'
+                    },
+                    expirationDate: {
+                        element: '#card-expiration-date',
+                        placeholder: 'MM / YY'
+                    },
+                    ccv: {
+                        element: '#card-ccv',
+                        placeholder: '123'
+                    }
+                },
+                styles: {
+                    'input': {
+                        'color': 'gray',
+                        'font-size': '16px',
+                        'line-height': '24px'
+                    },
+                    'input.ccv': {
+                        'font-size': '16px'
+                    },
+                    ':focus': {
+                        'color': 'black'
+                    },
+                    '.valid': {
+                        'color': 'green'
+                    },
+                    '.invalid': {
+                        'color': 'red'
+                    }
+                },
+                // 卡號輸入正確後，自動跳到下一個欄位
+                isMaskCreditCardNumber: true,
+                maskCreditCardNumberRange: {
+                    beginIndex: 6,
+                    endIndex: 11
+                }
+            });
+
+            // 監聽輸入狀態
+            TPDirect.card.onUpdate(function (update) {
+                console.log('TapPay card update:', update);
+                
+                // 取得各欄位狀態
+                const submitButton = document.getElementById('submit-payment');
+                if (submitButton) {
+                    if (update.canGetPrime) {
+                        // 可以取得 prime
+                        submitButton.disabled = false;
+                        console.log('信用卡表單驗證通過，啟用付款按鈕');
+                    } else {
+                        // 不能取得 prime
+                        submitButton.disabled = true;
+                        console.log('信用卡表單驗證失敗，禁用付款按鈕');
+                    }
+                }
+
+                // 顯示錯誤訊息
+                if (update.hasError) {
+                    console.log('信用卡資訊有誤:', update.status);
+                }
+            });
+
+            console.log('Orders 頁面: 信用卡表單設置完成');
+            
+        } catch (error) {
+            console.error('Orders 頁面: 信用卡表單設置失敗:', error);
+        }
+    }
+
+    // 使用 booking.js 中的 TapPay 初始化邏輯
+    document.addEventListener('DOMContentLoaded', function () {
+        // 延遲執行，確保 booking.js 先載入
+        setTimeout(function() {
+            // 檢查 TapPay SDK 是否載入成功
+            if (typeof TPDirect !== 'undefined') {
+                console.log('Orders 頁面: TapPay SDK 載入成功');
+
+                // 取得 CSRF Token
+                const csrfToken = document.querySelector('meta[name="csrf-token"]');
+                const tokenValue = csrfToken ? csrfToken.content : null;
+
+                if (!tokenValue) {
+                    console.error('找不到 CSRF Token');
+                    return;
+                }
+
+                // 初始化 TapPay（複用 booking.js 的邏輯）
+                fetch('/api/tappay/config', {
+                    method: 'GET',
+                    headers: {
+                        'X-CSRFToken': tokenValue,
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                    .then(response => response.json())
+                    .then(config => {
+                        if (config.success) {
+                            TPDirect.setupSDK(
+                                config.app_id,
+                                config.app_key,
+                                config.environment
+                            );
+                            console.log('Orders 頁面: TapPay 初始化完成');
+                            
+                            // 直接初始化信用卡表單
+                            setupCreditCardFormForOrders();
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Orders 頁面: 載入 TapPay 配置失敗:', error);
+                    });
+            }
+        }, 100); // 100ms 延遲
+    });
+    
+    // Orders 頁面的付款處理邏輯
+    function onSubmitPayment() {
+        console.log('Orders 頁面: 開始付款處理...');
+        
+        const tappayStatus = TPDirect.card.getTappayFieldsStatus();
+        console.log('TapPay 表單狀態:', tappayStatus);
+
+        // 檢查是否可以取得 Prime
+        if (!tappayStatus.canGetPrime) {
+            alert('請檢查信用卡資訊');
+            return;
+        }
+
+        // 檢查是否有有效的預訂資訊
+        const reservation = window.currentReservation;
+        if (!reservation || !reservation.isReserved) {
+            alert('沒有有效的預訂資訊，請重新預訂');
+            return;
+        }
+
+        // 顯示處理中狀態
+        showPaymentProcessing();
+
+        // 取得 Prime
+        TPDirect.card.getPrime(function (result) {
+            if (result.status !== 0) {
+                hidePaymentProcessing();
+                alert('取得付款憑證失敗：' + result.msg);
+                return;
+            }
+
+            console.log('Orders 頁面: 取得 prime 成功: ', result.card.prime);
+
+            // 準備付款資料
+            const paymentData = {
+                prime: result.card.prime,
+                amount: reservation.amount,
+                booking_id: reservation.bookingId,
+                order_id: reservation.orderId,
+                car_id: reservation.carId
+            };
+
+            console.log('Orders 頁面: 送出付款請求:', paymentData);
+
+            // 送到後端處理付款
+            fetch('/api/payments/process', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCSRFToken()
+                },
+                body: JSON.stringify(paymentData)
+            })
+                .then(response => response.json())
+                .then(data => {
+                    hidePaymentProcessing();
+                    console.log('Orders 頁面: 付款回應:', data);
+
+                    if (data.success) {
+                        // 標記付款已完成
+                        window.paymentCompleted = true;
+                        
+                        alert('付款成功！交易編號：' + (data.order_number || data.transaction_id));
+                        
+                        // 關閉付款 Modal
+                        const paymentModal = bootstrap.Modal.getInstance(document.getElementById('paymentModal'));
+                        if (paymentModal) {
+                            paymentModal.hide();
+                        }
+                        
+                        // 重新載入訂單頁面以更新狀態
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 1000);
+                        
+                    } else {
+                        alert('付款失敗：' + (data.message || '請稍後再試'));
+                    }
+                })
+                .catch(error => {
+                    hidePaymentProcessing();
+                    console.error('Orders 頁面: 付款錯誤:', error);
+                    alert('系統錯誤，請稍後再試');
+                });
+        });
+    }
+    
+    // 顯示/隱藏處理中狀態的輔助函數
+    function showPaymentProcessing() {
+        const statusElement = document.getElementById('payment-status');
+        if (statusElement) {
+            statusElement.style.display = 'block';
+            statusElement.innerHTML = `
+                <div class="alert alert-info">
+                    <div class="spinner-border spinner-border-sm" role="status"></div>
+                    正在處理付款，請稍候...
+                </div>
+            `;
+        }
+
+        const submitButton = document.getElementById('submit-payment');
+        if (submitButton) {
+            submitButton.disabled = true;
+        }
+    }
+
+    function hidePaymentProcessing() {
+        const statusElement = document.getElementById('payment-status');
+        if (statusElement) {
+            statusElement.style.display = 'none';
+        }
+
+        const submitButton = document.getElementById('submit-payment');
+        if (submitButton) {
+            submitButton.disabled = false;
+        }
+    }
+    
+    function getCSRFToken() {
+        const token = document.querySelector('meta[name="csrf-token"]');
+        return token ? token.getAttribute('content') : '';
+    }
+</script>
 {% endblock %}

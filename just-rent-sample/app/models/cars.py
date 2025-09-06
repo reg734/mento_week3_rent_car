@@ -1,6 +1,6 @@
 
 from app import db
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 
 class Car(db.Model):
     __tablename__ = 'cars'
@@ -24,13 +24,14 @@ class Car(db.Model):
     car_level = db.Column(db.Integer, nullable=False, default=1)
     rental_status = db.Column(db.String(20), nullable=False, default='available')
 
+    # 使用台灣時間而不是 UTC 時間
     created_at = db.Column(db.DateTime, nullable=False,
-                            default=datetime.utcnow,
+                            default=lambda: datetime.now(timezone(timedelta(hours=8))),
                             server_default=db.func.current_timestamp())
     updated_at = db.Column(db.DateTime, nullable=False,
-                            default=datetime.utcnow,
+                            default=lambda: datetime.now(timezone(timedelta(hours=8))),
                             server_default=db.func.current_timestamp(),
-                            onupdate=datetime.utcnow)
+                            onupdate=lambda: datetime.now(timezone(timedelta(hours=8))))
 
 def __repr__(self):
     return f"<Car(name={self.name}, brand={self.brand}, year={self.year}, body={self.body}, seats={self.seats}, doors={self.doors}, luggage_capacity={self.luggage_capacity}, fuel_type={self.fuel_type}, engine={self.engine}, transmission={self.transmission}, drive_type={self.drive_type}, mileage={self.mileage}, fuel_economy={self.fuel_economy}, exterior_color={self.exterior_color}, interior_color={self.interior_color}, car_level={self.car_level})>"

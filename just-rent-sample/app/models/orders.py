@@ -1,5 +1,5 @@
 from app import db
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 
 class Order(db.Model):
     __tablename__ = 'orders'
@@ -12,8 +12,9 @@ default='pending')
     amount = db.Column(db.Numeric(10, 2), nullable=False)
     payment_method = db.Column(db.String(255), nullable=True)
     transaction_id = db.Column(db.String(255), nullable=True, unique=True)
+    # 使用台灣時間而不是 UTC 時間
     created_at = db.Column(db.DateTime, nullable=False,
-default=datetime.utcnow)
+default=lambda: datetime.now(timezone(timedelta(hours=8))))
     paid_at = db.Column(db.DateTime, nullable=True)
 
     # 關聯到 Booking 表 (一對一關係)

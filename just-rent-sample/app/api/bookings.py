@@ -2,8 +2,9 @@ from flask import jsonify, request
 from flask_login import login_required, current_user
 from app.api import bp
 from app.models import Car, Location, Booking, Price, User
+from app.models.orders import Order
 from app import db
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from dateutil import parser
 import math
 from sqlalchemy import text
@@ -17,13 +18,18 @@ def get_bookings():
     pickup_location = Location.__table__.alias('pickup_loc')
     dropoff_location = Location.__table__.alias('dropoff_loc')
     
-    # 基礎查詢
+    # 基礎查詢，包含 Order 資訊
     query = db.session.query(
         Booking,
         Car.name.label('car_name'),
         User.username.label('user_name'),
         pickup_location.c.name.label('pickup_location'),
-        dropoff_location.c.name.label('dropoff_location')
+        dropoff_location.c.name.label('dropoff_location'),
+        Order.id.label('order_id'),
+        Order.payment_status,
+        Order.amount,
+        Order.transaction_id,
+        Order.paid_at
     ).join(
         Car, Booking.car_id == Car.id
     ).join(
@@ -32,6 +38,8 @@ def get_bookings():
         pickup_location, Booking.pick_up_location_id == pickup_location.c.id
     ).join(
         dropoff_location, Booking.drop_off_location_id == dropoff_location.c.id
+    ).outerjoin(
+        Order, Booking.id == Order.booking_id
     )
     
     # 根據權限過濾資料
@@ -44,7 +52,7 @@ def get_bookings():
     
     # 整理資料
     bookings_list = []
-    for booking, car_name, user_name, pickup_location, dropoff_location in results:
+    for booking, car_name, user_name, pickup_location, dropoff_location, order_id, payment_status, amount, transaction_id, paid_at in results:
         bookings_list.append({
             'id': booking.id,
             'user_id': booking.user_id,
@@ -55,7 +63,12 @@ def get_bookings():
             'dropoff_location': dropoff_location,
             'pick_up_time': booking.pick_up_time.isoformat() if booking.pick_up_time else None,
             'return_time': booking.return_time.isoformat() if booking.return_time else None,
-            'status': booking.status
+            'status': booking.booking_status,
+            'order_id': order_id,  # 添加真正的 order_id
+            'payment_status': payment_status or 'N/A',
+            'amount': float(amount) if amount else 0,
+            'transaction_id': transaction_id,
+            'paid_at': paid_at.isoformat() if paid_at else None
         })
     
     return jsonify({
@@ -63,6 +76,116 @@ def get_bookings():
         'bookings': bookings_list,
         'is_admin': current_user.is_admin()
     })
+
+@bp.route('/api/bookings/debug/<int:booking_id>', methods=['GET'])
+@login_required
+def debug_booking(booking_id):
+    """調試特定訂單的狀態（臨時端點）"""
+    booking = Booking.query.get_or_404(booking_id)
+    order = Order.query.filter_by(booking_id=booking_id).first()
+    
+    # 確保用戶權限
+    if not current_user.is_admin() and booking.user_id != current_user.id:
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    debug_info = {
+        'booking': {
+            'id': booking.id,
+            'booking_status': booking.booking_status,
+            'created_at': booking.created_at.isoformat() if booking.created_at else None,
+            'user_id': booking.user_id,
+            'car_id': booking.car_id
+        },
+        'order': {
+            'id': order.id if order else None,
+            'payment_status': order.payment_status if order else None,
+            'amount': float(order.amount) if order and order.amount else None,
+            'transaction_id': order.transaction_id if order else None,
+            'paid_at': order.paid_at.isoformat() if order and order.paid_at else None,
+            'created_at': order.created_at.isoformat() if order and order.created_at else None
+        } if order else None,
+        'status_consistency_check': {
+            'is_consistent': True,
+            'issues': []
+        }
+    }
+    
+    # 檢查狀態一致性
+    if order:
+        if booking.booking_status == 'confirmed' and order.payment_status != 'paid':
+            debug_info['status_consistency_check']['is_consistent'] = False
+            debug_info['status_consistency_check']['issues'].append(
+                f"Booking confirmed but payment is {order.payment_status}"
+            )
+        
+        if order.payment_status == 'expired' and booking.booking_status != 'cancelled':
+            debug_info['status_consistency_check']['is_consistent'] = False
+            debug_info['status_consistency_check']['issues'].append(
+                f"Payment expired but booking is {booking.booking_status}"
+            )
+    
+    return jsonify({
+        'success': True,
+        'debug_info': debug_info
+    })
+
+@bp.route('/api/bookings/fix-status/<int:booking_id>', methods=['POST'])
+@login_required
+def fix_booking_status(booking_id):
+    """修復訂單狀態不一致的問題"""
+    booking = Booking.query.get_or_404(booking_id)
+    order = Order.query.filter_by(booking_id=booking_id).first()
+    
+    # 確保用戶權限
+    if not current_user.is_admin() and booking.user_id != current_user.id:
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    if not order:
+        return jsonify({'error': 'No associated order found'}), 404
+    
+    try:
+        fixed_issues = []
+        
+        # 修復邏輯：根據付款狀態修正訂單狀態
+        if order.payment_status == 'paid' and booking.booking_status != 'confirmed':
+            booking.booking_status = 'confirmed'
+            fixed_issues.append(f'Updated booking status to confirmed (payment is paid)')
+            
+        elif order.payment_status == 'expired' and booking.booking_status == 'confirmed':
+            booking.booking_status = 'cancelled'
+            fixed_issues.append(f'Updated booking status to cancelled (payment expired)')
+            
+        # 確保車輛狀態正確
+        if booking.booking_status == 'confirmed' and order.payment_status == 'paid':
+            car = Car.query.get(booking.car_id)
+            if car and car.rental_status != 'rented':
+                car.rental_status = 'rented'
+                fixed_issues.append(f'Updated car {car.id} status to rented')
+                
+        elif booking.booking_status == 'cancelled':
+            car = Car.query.get(booking.car_id)
+            if car and car.rental_status != 'available':
+                car.rental_status = 'available'
+                fixed_issues.append(f'Updated car {car.id} status to available')
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': f'Fixed {len(fixed_issues)} issues',
+            'fixed_issues': fixed_issues,
+            'current_status': {
+                'booking_status': booking.booking_status,
+                'payment_status': order.payment_status
+            }
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
 
 @bp.route('/api/bookings/available-cars', methods=['GET'])
 def get_available_cars():
@@ -148,7 +271,7 @@ def get_available_cars():
                 Booking.car_id == car.id,
                 Booking.pick_up_time < return_dt,
                 Booking.return_time > pickup_dt,
-                Booking.status != 'cancelled'
+                Booking.booking_status != 'cancelled'
             ).first()
             if not overlap:
                 available_cars.append(car)
@@ -277,7 +400,7 @@ def create_booking():
             drop_off_location_id=dropoff_loc.id,
             pick_up_time=pickup_dt,
             return_time=return_dt,
-            status='scheduled'
+            booking_status='scheduled'
         )
         
         db.session.add(booking)
@@ -297,6 +420,162 @@ def create_booking():
         }), 500
     
 
+@bp.route('/api/bookings/reserve', methods=['POST'])
+@login_required
+def create_reservation():
+    """
+    建立預訂（同時建立 Booking 和 Order）
+    這是新的預訂流程：建立預訂 → 付款 → 確認
+    """
+    try:
+        data = request.json
+        
+        # 取得表單資料
+        car_id = data.get('car_id')
+        pickup_location = data.get('pickup_location')
+        dropoff_location = data.get('dropoff_location')
+        pickup_datetime = data.get('pickup_datetime')
+        return_datetime = data.get('return_datetime')
+        amount = data.get('amount')
+        
+        print(f"=== 預訂 API 接收資料 ===")
+        print(f"car_id: {car_id}")
+        print(f"pickup_location: {pickup_location}")
+        print(f"dropoff_location: {dropoff_location}")
+        print(f"pickup_datetime: {pickup_datetime}")
+        print(f"return_datetime: {return_datetime}")
+        print(f"amount: {amount}")
+        
+        # 驗證必要欄位
+        if not all([car_id, pickup_location, dropoff_location, pickup_datetime, return_datetime, amount]):
+            return jsonify({
+                'status': 'error',
+                'message': '缺少必要資訊'
+            }), 400
+        
+        # 解析日期時間
+        try:
+            pickup_dt = datetime.fromisoformat(pickup_datetime.replace('Z', '+00:00'))
+            return_dt = datetime.fromisoformat(return_datetime.replace('Z', '+00:00'))
+        except:
+            return jsonify({
+                'status': 'error',
+                'message': '日期時間格式錯誤'
+            }), 400
+        
+        # 建立地點映射表
+        location_mapping = {
+            '台北': '台北站',
+            '台中': '台中站',
+            '高雄': '高雄站',
+            'Taipei': '台北站',
+            'Taichung': '台中站',
+            'Kaohsiung': '高雄站',
+            '台北站': '台北站',
+            '台中站': '台中站',
+            '高雄站': '高雄站'
+        }
+        
+        # 取得標準化的地點名稱
+        pickup_name = location_mapping.get(pickup_location, pickup_location)
+        dropoff_name = location_mapping.get(dropoff_location, dropoff_location)
+        
+        # 查詢地點
+        pickup_loc = Location.query.filter_by(name=pickup_name).first()
+        dropoff_loc = Location.query.filter_by(name=dropoff_name).first()
+        
+        if not pickup_loc or not dropoff_loc:
+            return jsonify({
+                'status': 'error',
+                'message': f'找不到有效地點：{pickup_location} 或 {dropoff_location}'
+            }), 400
+        
+        # 檢查車輛是否存在且可用
+        car = Car.query.get(car_id)
+        if not car:
+            return jsonify({
+                'status': 'error',
+                'message': '找不到指定車輛'
+            }), 400
+        
+        # 檢查時間衝突
+        overlap = Booking.query.filter(
+            Booking.car_id == car_id,
+            Booking.pick_up_time < return_dt,
+            Booking.return_time > pickup_dt,
+            Booking.booking_status.in_(['pending', 'confirmed'])
+        ).first()
+        
+        if overlap:
+            return jsonify({
+                'status': 'error',
+                'message': '選擇的時段車輛已被預訂'
+            }), 400
+        
+        # 開始資料庫交易
+        try:
+            # 設定台灣時區 (UTC+8)
+            taiwan_timezone = timezone(timedelta(hours=8))
+            taiwan_now = datetime.now(taiwan_timezone)
+            
+            # 1. 建立 Booking (狀態：pending) - 明確設定台灣時間
+            booking = Booking(
+                user_id=current_user.id,
+                car_id=car_id,
+                pick_up_location_id=pickup_loc.id,
+                drop_off_location_id=dropoff_loc.id,
+                pick_up_time=pickup_dt,
+                return_time=return_dt,
+                booking_status='pending',  # 待付款
+                created_at=taiwan_now  # 明確設定台灣時間
+            )
+            db.session.add(booking)
+            db.session.flush()  # 取得 booking.id
+            
+            # 2. 建立 Order (狀態：pending)
+            order = Order(
+                booking_id=booking.id,
+                payment_status='pending',
+                amount=amount,
+                created_at=taiwan_now  # 使用相同的台灣時間
+            )
+            db.session.add(order)
+            db.session.flush()  # 取得 order.id
+            
+            # 3. 更新車輛狀態為預留
+            car.rental_status = 'reserved'
+            
+            # 提交交易
+            db.session.commit()
+            
+            print(f"=== 預訂建立成功 ===")
+            print(f"booking_id: {booking.id}")
+            print(f"order_id: {order.id}")
+            
+            return jsonify({
+                'status': 'success',
+                'message': '預訂建立成功',
+                'booking_id': booking.id,
+                'order_id': order.id,
+                'amount': float(amount)
+            })
+            
+        except Exception as e:
+            db.session.rollback()
+            print(f"資料庫交易錯誤: {str(e)}")
+            return jsonify({
+                'status': 'error',
+                'message': f'預訂建立失敗：{str(e)}'
+            }), 500
+            
+    except Exception as e:
+        print(f"預訂 API 錯誤: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'message': f'系統錯誤：{str(e)}'
+        }), 500
+
+
 @bp.route('/api/bookings/cancel/<int:order_id>', methods=['POST'])
 @login_required
 def api_cancel_order(order_id):
@@ -312,9 +591,27 @@ def api_cancel_order(order_id):
         if not booking:
             return jsonify({'success': False, 'message': '找不到此訂單或無權限取消'})
 
-    if booking.status == 'cancelled':
+    if booking.booking_status == 'cancelled':
         return jsonify({'success': False, 'message': '訂單已取消'})
 
-    booking.status = 'cancelled'
-    db.session.commit()
-    return jsonify({'success': True, 'message': '訂單已成功取消'})
+    try:
+        # 更新訂單狀態
+        booking.booking_status = 'cancelled'
+        
+        # 釋放車輛狀態
+        car = Car.query.get(booking.car_id)
+        if car:
+            car.rental_status = 'available'
+        
+        db.session.commit()
+        
+        print(f"=== 訂單取消成功 ===")
+        print(f"Booking {booking.id}: booking_status = cancelled")
+        print(f"Car {booking.car_id}: rental_status = available")
+        
+        return jsonify({'success': True, 'message': '訂單已成功取消'})
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"取消訂單失敗: {str(e)}")
+        return jsonify({'success': False, 'message': '取消失敗，請稍後再試'}), 500

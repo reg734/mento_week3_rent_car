@@ -22,7 +22,7 @@
             }).then(response => response.json());
         },
         
-        // 建立新訂單
+        // 建立新訂單（舊版本，保留兼容性）
         create: function(orderData) {
             return fetch('/api/bookings', {
                 method: 'POST',
@@ -39,17 +39,68 @@
             });
         },
         
+        // === 新增：預訂 API（同時建立 Booking 和 Order）===
+        createReservation: function(reservationData) {
+            return fetch('/api/bookings/reserve', {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCSRFToken() 
+                },
+                body: JSON.stringify(reservationData)
+            }).then(response => {
+                if (response.status === 401) {
+                    alert('請先登入後再進行預訂');
+                    window.location.href = '/login?next=/booking';
+                    return null;
+                }
+                return response.json();
+            });
+        },
+        
+        // === 新增：付款處理 API ===
+        processPayment: function(paymentData) {
+            return fetch('/api/payments/process', {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCSRFToken() 
+                },
+                body: JSON.stringify(paymentData)
+            }).then(response => response.json());
+        },
+        
         // 取消訂單
         cancel: function(orderId) {
             return fetch(`/api/bookings/cancel/${orderId}`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' }
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCSRFToken() 
+                }
             }).then(response => response.json());
         }
     };
+    
+    // === 新增：CSRF Token 取得函數 ===
+    function getCSRFToken() {
+        const token = document.querySelector('meta[name="csrf-token"]');
+        return token ? token.getAttribute('content') : '';
+    }
 
     // 將 BookingAPI 掛載到 window 以供其他地方使用
     window.BookingAPI = BookingAPI;
+
+    // === 新增：全域變數儲存當前預訂資訊 ===
+    window.currentReservation = {
+        bookingId: null,
+        orderId: null,
+        carId: null,
+        carName: null,
+        amount: null,
+        rentalDays: null,
+        isReserved: false  // 標記是否已預訂但未付款
+    };
 
     // ===== 初始化 =====
     document.addEventListener('DOMContentLoaded', function () {
@@ -287,8 +338,8 @@
   (${rentalDays}天)</strong>
                               </p>
                               <button class="btn 
-  btn-primary w-100" onclick="selectCar(${car.id})">
-                                  選擇此車
+  btn-primary w-100" onclick="selectCarWithPayment(${car.id})">
+                                  立即預訂
                               </button>
                           </div>
                       </div>
@@ -363,8 +414,12 @@
             rental_days: rentalDays
         };
         
+        // === 新增：儲存車輛資料供 selectCar 使用 ===
+        window.lastSearchedCars = cars;
+        
         // 除錯：印出儲存的資料
         console.log('儲存的 bookingData:', window.bookingData);
+        console.log('儲存的 cars:', window.lastSearchedCars);
     }
 
     /**
@@ -434,9 +489,145 @@
     // ===== 訂單相關 =====
 
     /**
-     * 選擇車輛並建立訂單
-     * 注意：這個函數需要全域存取，所以掛載到 window 
-物件
+     * === 新版：選擇車輛並建立預訂（包含付款流程）===
+     * 這是新的主要函數，會建立 Booking + Order，然後開啟付款 Modal
+     */
+    window.selectCarWithPayment = function (carId) {
+        // 確認是否有預訂資料
+        if (!window.bookingData) {
+            showAlert('請重新查詢車輛', 'danger');
+            return;
+        }
+
+        const bookingData = window.bookingData;
+        
+        // 尋找選中的車輛資訊（需要價格資訊）
+        const selectedCar = window.lastSearchedCars?.find(car => car.id === carId);
+        if (!selectedCar) {
+            showAlert('無法找到車輛資訊，請重新搜尋', 'danger');
+            return;
+        }
+
+        // 計算總金額
+        const totalAmount = selectedCar.price * bookingData.rental_days;
+
+        // 準備預訂資料
+        let pickupDateTime, returnDateTime;
+
+        try {
+            // 格式化日期時間，避免時區問題
+            function formatDateTime(dateStr, timeStr) {
+                let formattedDate = dateStr;
+                if (dateStr.includes(',')) {
+                    const date = new Date(dateStr + ' 12:00:00');
+                    const year = date.getFullYear();
+                    const month = String(date.getMonth() + 1).padStart(2, '0');
+                    const day = String(date.getDate()).padStart(2, '0');
+                    formattedDate = `${year}-${month}-${day}`;
+                }
+                const time = timeStr || '00:00';
+                return `${formattedDate}T${time}:00`;
+            }
+            
+            pickupDateTime = formatDateTime(bookingData.pickup_date, bookingData.pickup_time);
+            returnDateTime = formatDateTime(bookingData.return_date, bookingData.return_time);
+            
+        } catch (error) {
+            console.error('日期格式錯誤:', error);
+            showAlert('日期格式錯誤，請重新選擇', 'danger');
+            return;
+        }
+
+        // 準備預訂資料（新的 API 格式）
+        const reservationData = {
+            car_id: carId,
+            pickup_location: bookingData.pickup_location,
+            dropoff_location: bookingData.dropoff_location,
+            pickup_datetime: pickupDateTime,
+            return_datetime: returnDateTime,
+            amount: totalAmount
+        };
+        
+        console.log('=== 準備建立預訂 ===');
+        console.log('reservationData:', reservationData);
+
+        // 顯示確認對話框
+        const confirmMessage = `
+確定要預訂此車輛嗎？
+
+車輛：${selectedCar.name}
+取車：${bookingData.pickup_location} (${bookingData.pickup_date} ${bookingData.pickup_time})
+還車：${bookingData.dropoff_location} (${bookingData.return_date} ${bookingData.return_time})
+租期：${bookingData.rental_days} 天
+總金額：NT$ ${totalAmount.toLocaleString()}
+
+預訂後將需要完成付款。
+        `.trim();
+
+        if (!confirm(confirmMessage)) {
+            return;
+        }
+
+        // 關閉車輛選擇 modal
+        const modal = bootstrap.Modal.getInstance(document.getElementById('availableCarsModal'));
+        if (modal) {
+            modal.hide();
+        }
+
+        // 顯示處理中
+        showProcessing();
+
+        // 使用新的預訂 API（同時建立 Booking 和 Order）
+        BookingAPI.createReservation(reservationData)
+        .then(data => {
+            hideProcessing();
+
+            if (data && data.status === 'success') {
+                // 儲存預訂資訊到全域變數
+                window.currentReservation = {
+                    bookingId: data.booking_id,
+                    orderId: data.order_id,
+                    carId: carId,
+                    carName: selectedCar.name,
+                    amount: totalAmount,
+                    rentalDays: bookingData.rental_days,
+                    isReserved: true
+                };
+                
+                // 更新 bookingData 加入預訂資訊
+                window.bookingData.booking_id = data.booking_id;
+                window.bookingData.order_id = data.order_id;
+                window.bookingData.car_name = selectedCar.name;
+                window.bookingData.amount = totalAmount;
+
+                console.log('=== 預訂成功，準備開啟付款 ===');
+                console.log('currentReservation:', window.currentReservation);
+
+                // 檢查是否有付款 Modal
+                const paymentModal = document.getElementById('paymentModal');
+                if (paymentModal) {
+                    // 直接顯示付款 Modal，不需要經過 showPaymentModal 的檢查
+                    showPaymentModalDirect();
+                } else {
+                    // 如果沒有付款 Modal，顯示提示並導向
+                    alert('預訂成功！請前往付款頁面完成付款。');
+                    window.location.href = '/booking/payment/' + data.booking_id;
+                }
+                
+            } else if (data) {
+                showAlert(data.message || '預訂失敗', 'danger');
+            }
+        })
+        .catch(error => {
+            hideProcessing();
+            console.error('Reservation Error:', error);
+            showAlert('預訂失敗，請稍後再試', 'danger');
+        });
+    };
+
+    /**
+     * === 舊版：選擇車輛並直接建立訂單（保留兼容性）===
+     * 注意：這個函數需要全域存取，所以掛載到 window 物件
      */
     window.selectCar = function (carId) {
         // 確認是否有預訂資料
@@ -577,6 +768,307 @@
           }
       }
 
+    // === 新增：統一狀態處理函數 ===
+    
+    /**
+     * 取得訂單狀態資訊（統一處理邏輯，避免狀態不一致）
+     */
+    function getOrderStatusInfo(order) {
+        // 檢查狀態一致性
+        let orderBadgeClass, orderText, paymentBadgeClass, paymentText, paymentAction = '';
+        
+        // 如果付款已過期，訂單狀態應該視為已取消
+        if (order.payment_status === 'expired') {
+            orderBadgeClass = 'bg-danger';
+            orderText = 'Expired/Cancelled';
+            paymentBadgeClass = 'bg-danger';
+            paymentText = 'Expired';
+            
+            // 記錄不一致的狀況
+            if (order.status === 'confirmed') {
+                console.warn(`訂單 #${order.id} 狀態不一致: booking_status=${order.status}, payment_status=${order.payment_status}`);
+            }
+        }
+        // 如果已付款，訂單應為確認狀態
+        else if (order.payment_status === 'paid') {
+            orderBadgeClass = 'bg-success';
+            orderText = 'Confirmed';
+            paymentBadgeClass = 'bg-success';
+            paymentText = 'Paid';
+        }
+        // 如果付款待處理
+        else if (order.payment_status === 'pending') {
+            orderBadgeClass = 'bg-warning';
+            orderText = 'Pending Payment';
+            paymentBadgeClass = 'bg-warning';
+            paymentText = 'Pending';
+            
+            // 只有 pending 狀態才顯示補付款按鈕
+            paymentAction = `<br><button class="btn btn-sm btn-primary retry-payment" 
+                               data-booking-id="${order.id}" data-amount="${order.amount}"
+                               style="font-size: 0.7rem; padding: 2px 6px;">Pay Now</button>`;
+        }
+        // 其他狀態
+        else {
+            // 根據訂單狀態決定
+            if (order.status === 'confirmed') {
+                orderBadgeClass = 'bg-success';
+                orderText = 'Confirmed';
+            } else if (order.status === 'pending') {
+                orderBadgeClass = 'bg-warning';
+                orderText = 'Pending';
+            } else if (order.status === 'cancelled') {
+                orderBadgeClass = 'bg-danger';
+                orderText = 'Cancelled';
+            } else if (order.status === 'completed') {
+                orderBadgeClass = 'bg-info';
+                orderText = 'Completed';
+            } else {
+                orderBadgeClass = 'bg-secondary';
+                orderText = order.status || 'Unknown';
+            }
+            
+            paymentBadgeClass = 'bg-secondary';
+            paymentText = order.payment_status || 'N/A';
+        }
+        
+        return {
+            orderBadgeClass,
+            orderText,
+            paymentBadgeClass,
+            paymentText,
+            paymentAction
+        };
+    }
+
+    // === 新增：付款相關函數 ===
+    
+    /**
+     * 顯示付款 Modal (帶安全檢查)
+     * 這個函數會被外部呼叫時使用
+     */
+    window.showPaymentModal = function() {
+        const reservation = window.currentReservation;
+        if (!reservation || !reservation.isReserved) {
+            showAlert('沒有有效的預訂資訊', 'danger');
+            return;
+        }
+        
+        showPaymentModalDirect();
+    };
+
+    /**
+     * 直接顯示付款 Modal (無安全檢查)
+     * 這個函數用於預訂成功後直接開啟付款視窗
+     */
+    window.showPaymentModalDirect = function() {
+        const reservation = window.currentReservation;
+        
+        // 更新訂單摘要
+        const orderSummary = document.getElementById('order-summary');
+        if (orderSummary && window.bookingData && reservation) {
+            orderSummary.innerHTML = `
+                <table class="table table-sm mb-0">
+                    <tbody>
+                        <tr>
+                            <td width="30%"><strong>訂單編號</strong></td>
+                            <td>#${reservation.orderId || 'PENDING'}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>車輛名稱</strong></td>
+                            <td>${reservation.carName || 'N/A'}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>取車地點</strong></td>
+                            <td>${window.bookingData.pickup_location || 'N/A'}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>取車時間</strong></td>
+                            <td>${window.bookingData.pickup_date || 'N/A'} ${window.bookingData.pickup_time || ''}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>還車地點</strong></td>
+                            <td>${window.bookingData.dropoff_location || 'N/A'}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>還車時間</strong></td>
+                            <td>${window.bookingData.return_date || 'N/A'} ${window.bookingData.return_time || ''}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>租賃天數</strong></td>
+                            <td>${reservation.rentalDays || 1} 天</td>
+                        </tr>
+                        <tr class="table-primary">
+                            <td><strong>應付金額</strong></td>
+                            <td><strong class="text-primary">NT$ ${(reservation.amount || 0).toLocaleString()}</strong></td>
+                        </tr>
+                    </tbody>
+                </table>
+            `;
+        }
+        
+        // 顯示付款 Modal
+        try {
+            const paymentModal = new bootstrap.Modal(document.getElementById('paymentModal'));
+            paymentModal.show();
+            console.log('付款 Modal 已開啟');
+        } catch (error) {
+            console.error('開啟付款 Modal 失敗:', error);
+            alert('無法開啟付款視窗，請重新操作');
+        }
+    };
+
+    /**
+     * 處理付款成功
+     * 這個函數會被 booking.html 中的 TapPay 程式碼呼叫
+     */
+    window.handlePaymentSuccess = function(result) {
+        console.log('=== 付款成功 ===');
+        console.log('Payment result:', result);
+        
+        // 清除預訂狀態
+        window.currentReservation.isReserved = false;
+        
+        // 建立成功訊息
+        const successMessage = `
+付款成功！
+
+訂單編號：${result.order_number || window.currentReservation.orderId}
+交易編號：${result.transaction_id || 'N/A'}
+金額：NT$ ${window.currentReservation.amount.toLocaleString()}
+
+您的預訂已確認，感謝您的訂購！
+        `.trim();
+        
+        // 關閉付款 Modal
+        const paymentModal = bootstrap.Modal.getInstance(document.getElementById('paymentModal'));
+        if (paymentModal) {
+            paymentModal.hide();
+        }
+        
+        // 顯示成功訊息
+        showSuccessMessage(successMessage);
+        
+        // 重置預訂資料
+        window.currentReservation = {
+            bookingId: null,
+            orderId: null,
+            carId: null,
+            carName: null,
+            amount: null,
+            rentalDays: null,
+            isReserved: false
+        };
+        
+        // 導向訂單頁面
+        setTimeout(() => {
+            if (confirm('是否要查看訂單詳情？')) {
+                window.location.href = '/account/orders';
+            }
+        }, 2000);
+    };
+
+    /**
+     * 處理付款失敗
+     * 這個函數會被 booking.html 中的 TapPay 程式碼呼叫
+     */
+    window.handlePaymentFailure = function(result) {
+        console.log('=== 付款失敗 ===');
+        console.log('Payment error:', result);
+        
+        const errorMessage = `
+付款失敗
+
+錯誤訊息：${result.message || '交易處理失敗'}
+錯誤代碼：${result.error_code || 'UNKNOWN'}
+
+請檢查您的信用卡資訊後重試，或聯繫客服。
+
+注意：您的預訂仍然有效，請儘快完成付款。
+        `.trim();
+        
+        alert(errorMessage);
+        
+        // 如果需要釋放預訂
+        if (result.release_booking) {
+            window.currentReservation.isReserved = false;
+            // 關閉付款 Modal
+            const paymentModal = bootstrap.Modal.getInstance(document.getElementById('paymentModal'));
+            if (paymentModal) {
+                paymentModal.hide();
+            }
+        }
+    };
+
+    /**
+     * 取消預訂
+     * 這個函數會被付款 Modal 的取消按鈕呼叫
+     */
+    window.cancelReservation = function() {
+        const reservation = window.currentReservation;
+        if (!reservation || !reservation.isReserved) {
+            // 沒有有效預訂，直接關閉 Modal
+            const paymentModal = bootstrap.Modal.getInstance(document.getElementById('paymentModal'));
+            if (paymentModal) {
+                paymentModal.hide();
+            }
+            return;
+        }
+        
+        if (confirm('⚠️ 確定要完全取消此預訂嗎？\n\n取消後車輛將會釋放，您需要重新預訂。\n如果只是想稍後付款，請點擊「稍後付款」按鈕。')) {
+            showProcessing();
+            
+            BookingAPI.cancel(reservation.bookingId)
+            .then(data => {
+                hideProcessing();
+                if (data && data.success) {
+                    alert('預訂已完全取消，車輛已釋放');
+                    
+                    // 重置預訂狀態
+                    window.currentReservation.isReserved = false;
+                    
+                    // 關閉付款 Modal
+                    const paymentModal = bootstrap.Modal.getInstance(document.getElementById('paymentModal'));
+                    if (paymentModal) {
+                        paymentModal.hide();
+                    }
+                    
+                    // 可選：導向車輛搜尋頁面
+                    if (confirm('是否要重新搜尋車輛？')) {
+                        window.location.href = '/booking';
+                    }
+                } else {
+                    showAlert(data?.message || '取消失敗', 'danger');
+                }
+            })
+            .catch(error => {
+                hideProcessing();
+                console.error('Cancel error:', error);
+                showAlert('取消失敗，請稍後再試', 'danger');
+            });
+        }
+    };
+
+    /**
+     * 退出付款 (不取消預訂) - 全域函數
+     * 這個函數可以被 booking.html 和補付款流程使用
+     */
+    window.exitPayment = function() {
+        // 關閉付款 Modal，但不取消預訂
+        const paymentModal = bootstrap.Modal.getInstance(document.getElementById('paymentModal'));
+        if (paymentModal) {
+            paymentModal.hide();
+        }
+        
+        // 顯示提示訊息
+        alert('您的預訂已保留，可以稍後在訂單頁面重新付款。請注意：預訂將在3分鐘後自動取消。');
+        
+        // 可選：導向訂單頁面
+        if (confirm('是否要前往訂單頁面查看？')) {
+            window.location.href = '/account/orders';
+        }
+    };
+
     /**
      * 顯示成功訊息
      */
@@ -606,6 +1098,10 @@
             .then(data => {
                 if (data.success) {
                     console.log('Orders loaded:', data.bookings);
+                    
+                    // 儲存訂單資料供補付款使用
+                    window.lastLoadedBookings = data.bookings;
+                    
                     // 根據頁面類型渲染訂單
                     if (window.location.pathname.includes('/account/orders')) {
                         renderUserOrders(data.bookings);
@@ -624,18 +1120,54 @@
      * 渲染用戶訂單頁面
      */
     function renderUserOrders(bookings) {
-        // 分類訂單
-        const scheduled = bookings.filter(b => b.status === 'scheduled');
+        // 分類訂單 - 修復邏輯，確保稍後付款的訂單正確顯示
+        
+        console.log('=== 訂單分類調試 ===');
+        console.log('所有訂單:', bookings);
+        
+        const scheduled = bookings.filter(b => {
+            // 檢查是否為有效的預定訂單
+            const isValidBookingStatus = (b.status === 'pending' || b.status === 'confirmed' || b.status === 'scheduled');
+            const isNotCancelled = b.status !== 'cancelled';
+            
+            // 重要：任何付款已過期的訂單都不應該出現在 scheduled 中
+            if (b.payment_status === 'expired') {
+                console.warn(`訂單 #${b.id} 付款已過期: booking_status=${b.status}, payment_status=${b.payment_status} -> 移到取消分類`);
+                return false;
+            }
+            
+            // 正常情況：booking 狀態有效且沒有被取消且付款未過期
+            // 包括：pending/pending（稍後付款），confirmed/paid（已付款），等等
+            const shouldShow = isValidBookingStatus && isNotCancelled;
+            
+            console.log(`訂單 #${b.id}: status=${b.status}, payment_status=${b.payment_status}, shouldShow=${shouldShow}`);
+            return shouldShow;
+        });
+        
         const completed = bookings.filter(b => b.status === 'completed');
-        const cancelled = bookings.filter(b => b.status === 'cancelled');
+        
+        // 取消的訂單包括：明確取消的 + 付款已過期的訂單（不管 booking status）
+        const cancelled = bookings.filter(b => 
+            b.status === 'cancelled' || 
+            b.payment_status === 'expired'
+        );
+        
+        console.log('分類結果:');
+        console.log('- Scheduled:', scheduled.length, scheduled.map(b => `#${b.id}(${b.status}/${b.payment_status})`));
+        console.log('- Completed:', completed.length);
+        console.log('- Cancelled:', cancelled.length, cancelled.map(b => `#${b.id}(${b.status}/${b.payment_status})`));
         
         // 渲染預定訂單
         const scheduledBody = document.querySelector('#scheduled-orders-body');
         if (scheduledBody) {
-            scheduledBody.innerHTML = scheduled.map(order => `
+            scheduledBody.innerHTML = scheduled.map(order => {
+                // 決定訂單狀態和付款狀態（確保一致性）
+                const statusInfo = getOrderStatusInfo(order);
+                
+                return `
                 <tr>
                     <td><span class="d-lg-none d-sm-block">Order ID</span>
-                        <div class="badge bg-gray-100 text-dark">#${order.id}</div>
+                        <div class="badge bg-gray-100 text-dark">#${order.order_id || order.id}</div>
                     </td>
                     <td><span class="d-lg-none d-sm-block">Car Name</span><span class="bold">${order.car_name}</span></td>
                     <td><span class="d-lg-none d-sm-block">Pick Up Location</span>${order.pickup_location}</td>
@@ -643,25 +1175,34 @@
                     <td><span class="d-lg-none d-sm-block">Pick Up Date</span>${formatDateTime(order.pick_up_time)}</td>
                     <td><span class="d-lg-none d-sm-block">Return Date</span>${formatDateTime(order.return_time)}</td>
                     <td>
-                        <div class="badge rounded-pill bg-warning">${order.status}</div>
+                        <div class="badge rounded-pill ${statusInfo.orderBadgeClass}">${statusInfo.orderText}</div>
+                    </td>
+                    <td>
+                        <div class="badge rounded-pill ${statusInfo.paymentBadgeClass}">${statusInfo.paymentText}</div>
+                        ${order.amount ? `<br><small class="text-muted">NT$ ${order.amount.toLocaleString()}</small>` : ''}
+                        ${statusInfo.paymentAction}
                     </td>
                     <td>
                         <div style="display: flex; justify-content: center; align-items: center;">
                             <button class="btn btn-danger btn-xs btn-cancel-order" data-order-id="${order.id}"
-                                style="padding: 2px 8px; font-size: 0.8rem;">X</button>
+                                style="padding: 2px 8px; font-size: 0.8rem;">Cancel</button>
                         </div>
                     </td>
                 </tr>
-            `).join('');
+                `;
+            }).join('');
         }
         
         // 渲染完成訂單
         const completedBody = document.querySelector('#completed-orders-body');
         if (completedBody) {
-            completedBody.innerHTML = completed.map(order => `
+            completedBody.innerHTML = completed.map(order => {
+                const statusInfo = getOrderStatusInfo(order);
+                
+                return `
                 <tr>
                     <td><span class="d-lg-none d-sm-block">Order ID</span>
-                        <div class="badge bg-gray-100 text-dark">#${order.id}</div>
+                        <div class="badge bg-gray-100 text-dark">#${order.order_id || order.id}</div>
                     </td>
                     <td><span class="d-lg-none d-sm-block">Car Name</span><span class="bold">${order.car_name}</span></td>
                     <td><span class="d-lg-none d-sm-block">Pick Up Location</span>${order.pickup_location}</td>
@@ -669,19 +1210,36 @@
                     <td><span class="d-lg-none d-sm-block">Pick Up Date</span>${formatDateTime(order.pick_up_time)}</td>
                     <td><span class="d-lg-none d-sm-block">Return Date</span>${formatDateTime(order.return_time)}</td>
                     <td>
-                        <div class="badge rounded-pill bg-success">${order.status}</div>
+                        <div class="badge rounded-pill bg-success">Completed</div>
+                    </td>
+                    <td>
+                        <div class="badge rounded-pill ${statusInfo.paymentBadgeClass}">${statusInfo.paymentText}</div>
+                        ${order.amount ? `<br><small class="text-muted">NT$ ${order.amount.toLocaleString()}</small>` : ''}
+                        ${order.paid_at ? `<br><small class="text-muted">${formatDateTime(order.paid_at)}</small>` : ''}
                     </td>
                 </tr>
-            `).join('');
+                `;
+            }).join('');
         }
         
         // 渲染取消訂單
         const cancelledBody = document.querySelector('#cancelled-orders-body');
         if (cancelledBody) {
-            cancelledBody.innerHTML = cancelled.map(order => `
+            cancelledBody.innerHTML = cancelled.map(order => {
+                const statusInfo = getOrderStatusInfo(order);
+                
+                // 對於取消的訂單，根據付款狀態顯示適當的文字
+                let finalPaymentText = statusInfo.paymentText;
+                if (order.payment_status === 'paid') {
+                    finalPaymentText = 'Paid (Refund Required)';
+                } else if (order.payment_status === 'refunded') {
+                    finalPaymentText = 'Refunded';
+                }
+                
+                return `
                 <tr>
                     <td><span class="d-lg-none d-sm-block">Order ID</span>
-                        <div class="badge bg-gray-100 text-dark">#${order.id}</div>
+                        <div class="badge bg-gray-100 text-dark">#${order.order_id || order.id}</div>
                     </td>
                     <td><span class="d-lg-none d-sm-block">Car Name</span><span class="bold">${order.car_name}</span></td>
                     <td><span class="d-lg-none d-sm-block">Pick Up Location</span>${order.pickup_location}</td>
@@ -689,14 +1247,20 @@
                     <td><span class="d-lg-none d-sm-block">Pick Up Date</span>${formatDateTime(order.pick_up_time)}</td>
                     <td><span class="d-lg-none d-sm-block">Return Date</span>${formatDateTime(order.return_time)}</td>
                     <td>
-                        <div class="badge rounded-pill bg-danger">${order.status}</div>
+                        <div class="badge rounded-pill bg-danger">Cancelled</div>
+                    </td>
+                    <td>
+                        <div class="badge rounded-pill ${statusInfo.paymentBadgeClass}">${finalPaymentText}</div>
+                        ${order.amount ? `<br><small class="text-muted">NT$ ${order.amount.toLocaleString()}</small>` : ''}
                     </td>
                 </tr>
-            `).join('');
+                `;
+            }).join('');
         }
         
-        // 重新綁定取消按鈕
+        // 重新綁定取消按鈕和補付款按鈕
         initCancelButtons();
+        initRetryPaymentButtons();
     }
     
     /**
@@ -808,6 +1372,108 @@
                     .catch(() => showAlert('發生錯誤，請稍後再試', 'danger'));
             });
         });
+    }
+    
+    /**
+     * 初始化補付款按鈕
+     */
+    function initRetryPaymentButtons() {
+        document.querySelectorAll('.retry-payment').forEach(function (btn) {
+            btn.addEventListener('click', function (e) {
+                e.preventDefault();
+                
+                const bookingId = btn.getAttribute('data-booking-id');
+                const amount = btn.getAttribute('data-amount');
+                
+                if (!bookingId || !amount) {
+                    alert('訂單資訊不完整');
+                    return;
+                }
+                
+                // 確認是否要進行付款
+                if (!confirm(`確定要為訂單 #${bookingId} 付款 NT$ ${parseFloat(amount).toLocaleString()} 嗎？`)) {
+                    return;
+                }
+                
+                // 觸發補付款流程
+                retryPayment(bookingId, amount);
+            });
+        });
+    }
+    
+    /**
+     * 補付款處理
+     */
+    function retryPayment(bookingId, amount) {
+        // 查找原始預訂資訊
+        const bookings = window.lastLoadedBookings || [];
+        const booking = bookings.find(b => b.id == bookingId);
+        
+        if (!booking) {
+            alert('找不到訂單資訊');
+            return;
+        }
+        
+        // 檢查是否有 order_id
+        if (!booking.order_id) {
+            alert('訂單資料不完整，缺少 Order ID');
+            console.error('Booking data missing order_id:', booking);
+            return;
+        }
+        
+        // 重新建立預訂資料結構供付款使用
+        window.currentReservation = {
+            bookingId: booking.id,
+            orderId: booking.order_id, // 使用真正的 order ID
+            carId: booking.car_id,
+            carName: booking.car_name,
+            amount: parseFloat(amount),
+            rentalDays: 1, // 預設值
+            isReserved: true
+        };
+        
+        // 重新建立 bookingData 結構
+        window.bookingData = {
+            pickup_location: booking.pickup_location,
+            dropoff_location: booking.dropoff_location,
+            pickup_date: formatDate(booking.pick_up_time),
+            pickup_time: formatTime(booking.pick_up_time),
+            return_date: formatDate(booking.return_time),
+            return_time: formatTime(booking.return_time),
+            booking_id: booking.id,
+            order_id: booking.order_id, // 使用真正的 order ID
+            car_name: booking.car_name,
+            amount: parseFloat(amount)
+        };
+        
+        console.log('=== 補付款資訊 ===');
+        console.log('currentReservation:', window.currentReservation);
+        console.log('bookingData:', window.bookingData);
+        
+        // 開啟付款 Modal
+        if (typeof showPaymentModalDirect === 'function') {
+            showPaymentModalDirect();
+        } else {
+            alert('付款功能暫時無法使用，請重新整理頁面後再試');
+        }
+    }
+    
+    /**
+     * 格式化日期 (ISO string 轉為 YYYY-MM-DD)
+     */
+    function formatDate(isoString) {
+        if (!isoString) return '';
+        const date = new Date(isoString);
+        return date.toISOString().split('T')[0];
+    }
+    
+    /**
+     * 格式化時間 (ISO string 轉為 HH:MM)
+     */
+    function formatTime(isoString) {
+        if (!isoString) return '00:00';
+        const date = new Date(isoString);
+        return date.toTimeString().slice(0, 5);
     }
 
 })();

@@ -453,8 +453,24 @@
                         CVV：123
                     </div>
                 </div>
+                <!-- 操作說明 -->
+                <div class="alert alert-info mb-3">
+                    <small>
+                        <i class="fa fa-info-circle me-1"></i>
+                        <strong>付款選項說明：</strong><br>
+                        • <strong>確認付款</strong>：立即完成付款並確認預訂<br>
+                        • <strong>稍後付款</strong>：保留預訂，可在訂單頁面重新付款（3分鐘內有效）<br>
+                        • <strong>取消預訂</strong>：完全取消並釋放車輛
+                    </small>
+                </div>
+                
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-secondary" onclick="exitPayment()">
+                        <i class="fa fa-clock-o me-1"></i>稍後付款
+                    </button>
+                    <button type="button" class="btn btn-danger btn-sm" onclick="cancelReservation()" style="margin-right: auto;">
+                        <i class="fa fa-times me-1"></i>取消預訂
+                    </button>
                     <button type="button" class="btn btn-primary" id="submit-payment" onclick="onSubmitPayment()">
                         <i class="fa fa-lock me-1"></i>確認付款
                     </button>
@@ -670,6 +686,12 @@
             return;
         }
 
+        // === 新增：檢查是否有有效的預訂資訊 ===
+        const reservation = window.currentReservation;
+        if (!reservation || !reservation.isReserved) {
+            alert('沒有有效的預訂資訊，請重新預訂');
+            return;
+        }
 
         // 顯示處理中
         showPaymentProcessing();
@@ -684,11 +706,17 @@
 
             console.log('取得 prime 成功: ', result.card.prime);
 
-            // 準備付款資料 - 簡化版本
+            // === 修改：使用實際的預訂資料 ===
             const paymentData = {
                 prime: result.card.prime,
-                amount: 10  // 測試金額 NT$10
+                amount: reservation.amount,
+                booking_id: reservation.bookingId,
+                order_id: reservation.orderId,
+                car_id: reservation.carId
             };
+
+            console.log('=== 送出付款請求 ===');
+            console.log('paymentData:', paymentData);
 
             // 送到後端處理付款
             fetch('/api/payments/process', {
@@ -704,24 +732,67 @@
                     hidePaymentProcessing();
 
                     if (data.success) {
-                        alert('付款成功！交易編號：' + data.order_number);
-                        // 關閉付款視窗
-                        const paymentModal =
-                            bootstrap.Modal.getInstance(document.getElementById('paymentModal'));
-                        if (paymentModal) {
-                            paymentModal.hide();
+                        // 標記付款已完成
+                        window.paymentCompleted = true;
+                        
+                        // === 修改：使用 booking.js 中的成功處理函數 ===
+                        if (typeof window.handlePaymentSuccess === 'function') {
+                            window.handlePaymentSuccess(data);
+                        } else {
+                            // 備用處理
+                            alert('付款成功！交易編號：' + data.order_number);
+                            const paymentModal = bootstrap.Modal.getInstance(document.getElementById('paymentModal'));
+                            if (paymentModal) {
+                                paymentModal.hide();
+                            }
                         }
                     } else {
-                        alert('付款失敗：' + (data.message || '請稍後再試'));
+                        // === 修改：使用 booking.js 中的失敗處理函數 ===
+                        if (typeof window.handlePaymentFailure === 'function') {
+                            window.handlePaymentFailure(data);
+                        } else {
+                            // 備用處理
+                            alert('付款失敗：' + (data.message || '請稍後再試'));
+                        }
                     }
                 })
                 .catch(error => {
                     hidePaymentProcessing();
                     console.error('付款錯誤：', error);
-                    alert('系統錯誤，請稍後再試');
+                    
+                    // === 修改：使用統一的錯誤處理 ===
+                    if (typeof window.handlePaymentFailure === 'function') {
+                        window.handlePaymentFailure({
+                            message: '網路錯誤，請稍後再試',
+                            error_code: 'NETWORK_ERROR'
+                        });
+                    } else {
+                        alert('系統錯誤，請稍後再試');
+                    }
                 });
         });
     }
+    
+    /**
+     * 監聽付款 Modal 的關閉事件
+     */
+    function setupPaymentModalListeners() {
+        const paymentModal = document.getElementById('paymentModal');
+        if (paymentModal) {
+            // 監聽 Modal 隱藏事件
+            paymentModal.addEventListener('hidden.bs.modal', function (event) {
+                // 當 Modal 被隱藏時，檢查是否是因為付款成功
+                if (!window.paymentCompleted) {
+                    console.log('付款 Modal 已關閉，預訂仍保持 pending 狀態');
+                }
+                // 重置標記
+                window.paymentCompleted = false;
+            });
+        }
+    }
+    
+    // exitPayment 函數已移至 booking.js 中，避免重複定義
+    
     // 確保 DOM 載入完成後執行
     document.addEventListener('DOMContentLoaded', function () {
         // 檢查 TapPay SDK 是否載入成功
@@ -769,6 +840,9 @@
 
                         // 立即設置信用卡表單
                         setupCreditCardForm();
+                        
+                        // 設置付款 Modal 監聽器
+                        setupPaymentModalListeners();
                     } else {
                         console.error('無法取得 TapPay 配置:', config.message);
                         showApiError('無法取得 TapPay 配置：' + config.message);

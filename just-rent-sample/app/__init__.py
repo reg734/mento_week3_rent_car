@@ -53,5 +53,11 @@ def create_app(config_class=Config):
 
     from app.api import bp as api_bp
     app.register_blueprint(api_bp)
+    
+    # 啟動預訂逾期檢查服務
+    if not app.config.get('TESTING'):
+        from app.services.booking_timeout import timeout_service
+        timeout_service.init_app(app)
+        timeout_service.start()
 
     return app
